@@ -841,7 +841,7 @@ struct CSphAggregateHit
 
 	int GetAggrCount () const
 	{
-		assert ( !m_dFieldMask.TestAll() );
+		assert ( !m_dFieldMask.TestAll ( false ) );
 		return m_iWordPos;
 	}
 
