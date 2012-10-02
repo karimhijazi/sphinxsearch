@@ -324,7 +324,7 @@ static CSphString		g_sConfigFile;
 static DWORD			g_uCfgCRC32		= 0;
 static struct stat		g_tCfgStat;
 
-static CSphConfigParser * g_pCfg			= NULL;
+static CSphConfigParser g_pCfg;
 
 #if USE_WINDOWS
 static bool				g_bSeamlessRotate	= false;
@@ -1358,8 +1358,6 @@ void Shutdown ()
 			}
 		}
 #endif
-
-		SafeDelete ( g_pCfg );
 
 		// save attribute updates for all local indexes
 		for ( IndexHashIterator_c it ( g_pIndexes ); it.Next(); )
@@ -11839,6 +11837,11 @@ void HandleMysqlSet ( NetOutputBuffer_c & tOut, BYTE & uPacketID, SqlStmt_t & tS
 }
 
 
+// fwd
+void PreCreatePlainIndex ( ServedDesc_t & tServed, const char * sName );
+bool PrereadNewIndex ( ServedIndex_t & tIdx, const CSphConfigSection & hIndex, const char * szIndexName );
+
+
 void HandleMysqlAttach ( const SqlStmt_t & tStmt, NetOutputBuffer_c & tOut, BYTE uPacketID )
 {
 	const CSphString & sFrom = tStmt.m_sIndex;
@@ -11880,10 +11883,17 @@ void HandleMysqlAttach ( const SqlStmt_t & tStmt, NetOutputBuffer_c & tOut, BYTE
 		return;
 	}
 
-	pFrom->m_pIndex = NULL; // after a succesfull Attach() RT index owns it
-	pFrom->m_bEnabled = false; // so we need to disable the disk index until further notice
-	pFrom->Unlock();
 	pTo->Unlock();
+
+	// after a succesfull Attach() RT index owns it
+	// so we need to create dummy disk index until further notice
+	pFrom->m_pIndex = NULL;
+	pFrom->m_bEnabled = false;
+	PreCreatePlainIndex ( *pFrom, sFrom.cstr() );
+	if ( pFrom->m_pIndex )
+		pFrom->m_bEnabled = PrereadNewIndex ( *pFrom, g_pCfg.m_tConf["index"][sFrom], sFrom.cstr() );
+	pFrom->Unlock();
+
 	SendMysqlOkPacket ( tOut, uPacketID );
 }
 
@@ -12850,9 +12860,9 @@ static void RotateIndexMT ( const CSphString & sIndex )
 	// fixup settings if needed
 	sphLogDebug ( "fixup settings if needed" );
 	g_tRotateConfigMutex.Lock ();
-	if ( tNewIndex.m_bOnlyNew && g_pCfg && g_pCfg->m_tConf ( "index" ) && g_pCfg->m_tConf["index"]( sIndex.cstr() ) )
+	if ( tNewIndex.m_bOnlyNew && g_pCfg.m_tConf ( "index" ) && g_pCfg.m_tConf["index"]( sIndex.cstr() ) )
 	{
-		if ( !sphFixupIndexSettings ( tNewIndex.m_pIndex, g_pCfg->m_tConf["index"][sIndex.cstr()], sError ) )
+		if ( !sphFixupIndexSettings ( tNewIndex.m_pIndex, g_pCfg.m_tConf["index"][sIndex.cstr()], sError ) )
 		{
 			sphWarning ( "rotating index '%s': fixup: %s; using old index", sIndex.cstr(), sError.cstr() );
 			g_tRotateConfigMutex.Unlock ();
@@ -13057,8 +13067,8 @@ void SeamlessTryToForkPrereader ()
 		return;
 	}
 
-	if ( tServed.m_bOnlyNew && g_pCfg && g_pCfg->m_tConf.Exists ( "index" ) && g_pCfg->m_tConf["index"].Exists ( sPrereading ) )
-		if ( !sphFixupIndexSettings ( g_pPrereading, g_pCfg->m_tConf["index"][sPrereading], sError ) )
+	if ( tServed.m_bOnlyNew && g_pCfg.m_tConf.Exists ( "index" ) && g_pCfg.m_tConf["index"].Exists ( sPrereading ) )
+		if ( !sphFixupIndexSettings ( g_pPrereading, g_pCfg.m_tConf["index"][sPrereading], sError ) )
 		{
 			sphWarning ( "rotating index '%s': fixup: %s; using old index", sPrereading, sError.cstr() );
 			return;
@@ -13575,6 +13585,18 @@ void FreeAgentStats ( DistributedIndex_t & tIndex )
 }
 
 
+void PreCreatePlainIndex ( ServedDesc_t & tServed, const char * sName )
+{
+	tServed.m_pIndex = sphCreateIndexPhrase ( sName, tServed.m_sIndexPath.cstr() );
+	tServed.m_pIndex->SetEnableStar ( tServed.m_bStar );
+	tServed.m_pIndex->m_bExpandKeywords = tServed.m_bExpand;
+	tServed.m_pIndex->m_iExpansionLimit = g_iExpansionLimit;
+	tServed.m_pIndex->SetPreopen ( tServed.m_bPreopen || g_bPreopenIndexes );
+	tServed.m_pIndex->SetWordlistPreload ( !tServed.m_bOnDiskDict && !g_bOnDiskDicts );
+	tServed.m_bEnabled = false;
+}
+
+
 ESphAddIndex AddIndex ( const char * szIndexName, const CSphConfigSection & hIndex )
 {
 	if ( hIndex("type") && hIndex["type"]=="distributed" )
@@ -13703,17 +13725,10 @@ ESphAddIndex AddIndex ( const char * szIndexName, const CSphConfigSection & hInd
 		ConfigureIndex ( tIdx, hIndex );
 
 		// try to create index
-		CSphString sWarning;
-		tIdx.m_pIndex = sphCreateIndexPhrase ( szIndexName, hIndex["path"].cstr() );
-		tIdx.m_pIndex->SetEnableStar ( tIdx.m_bStar );
-		tIdx.m_pIndex->m_bExpandKeywords = tIdx.m_bExpand;
-		tIdx.m_pIndex->m_iExpansionLimit = g_iExpansionLimit;
-		tIdx.m_pIndex->SetPreopen ( tIdx.m_bPreopen || g_bPreopenIndexes );
-		tIdx.m_pIndex->SetWordlistPreload ( !tIdx.m_bOnDiskDict && !g_bOnDiskDicts );
-		tIdx.m_bEnabled = false;
+		tIdx.m_sIndexPath = hIndex["path"];
+		PreCreatePlainIndex ( tIdx, szIndexName );
 
 		// done
-		tIdx.m_sIndexPath = hIndex["path"];
 		if ( !g_pIndexes->Add ( tIdx, szIndexName ) )
 		{
 			sphWarning ( "INTERNAL ERROR: index '%s': hash add failed - NOT SERVING", szIndexName );
@@ -13751,11 +13766,9 @@ bool CheckConfigChanges ()
 }
 
 
-void ReloadIndexSettings ( CSphConfigParser * pCP )
+void ReloadIndexSettings ( CSphConfigParser & tCP )
 {
-	assert ( pCP );
-
-	if ( !pCP->Parse ( g_sConfigFile.cstr () ) )
+	if ( !tCP.ReParse ( g_sConfigFile.cstr () ) )
 	{
 		sphWarning ( "failed to parse config file '%s'; using previous settings", g_sConfigFile.cstr () );
 		return;
@@ -13773,7 +13786,7 @@ void ReloadIndexSettings ( CSphConfigParser * pCP )
 	int nTotalIndexes = g_pIndexes->GetLength () + g_hDistIndexes.GetLength ();
 	int nChecked = 0;
 
-	const CSphConfig & hConf = pCP->m_tConf;
+	const CSphConfig & hConf = tCP.m_tConf;
 	hConf["index"].IterateStart ();
 	while ( hConf["index"].IterateNext() )
 	{
@@ -13888,12 +13901,9 @@ void CheckRotate ()
 		if ( g_dChildren.GetLength() && g_eWorkers!=MPM_PREFORK )
 			return;
 
-		CSphConfigParser * pCP = NULL;
-
 		if ( CheckConfigChanges () )
 		{
-			pCP = new CSphConfigParser;
-			ReloadIndexSettings ( pCP );
+			ReloadIndexSettings ( g_pCfg );
 		}
 
 		for ( IndexHashIterator_c it ( g_pIndexes ); it.Next(); )
@@ -13907,12 +13917,7 @@ void CheckRotate ()
 			RotateIndexGreedy ( tIndex, sIndex );
 			if ( bWasAdded && tIndex.m_bEnabled )
 			{
-				if ( !pCP )
-				{
-					pCP = new CSphConfigParser;
-					ReloadIndexSettings ( pCP );
-				}
-				const CSphConfigType & hConf = pCP->m_tConf ["index"];
+				const CSphConfigType & hConf = g_pCfg.m_tConf ["index"];
 				if ( hConf.Exists ( sIndex ) )
 				{
 					CSphString sError;
@@ -13932,7 +13937,6 @@ void CheckRotate ()
 			tIndex.Unlock();
 		}
 
-		SafeDelete ( pCP );
 		IndexRotationDone ();
 		return;
 	}
@@ -13945,10 +13949,8 @@ void CheckRotate ()
 		return; // rotate in progress already; will be handled in CheckPipes()
 
 	g_tRotateConfigMutex.Lock();
-	SafeDelete ( g_pCfg );
 	if ( CheckConfigChanges() )
 	{
-		g_pCfg = new CSphConfigParser;
 		ReloadIndexSettings ( g_pCfg );
 	}
 	g_tRotateConfigMutex.Unlock();
@@ -15572,11 +15574,10 @@ int WINAPI ServiceMain ( int argc, char **argv )
 	CheckConfigChanges ();
 
 	// do parse
-	CSphConfigParser cp;
-	if ( !cp.Parse ( g_sConfigFile.cstr () ) )
+	if ( !g_pCfg.Parse ( g_sConfigFile.cstr () ) )
 		sphFatal ( "failed to parse config file '%s'", g_sConfigFile.cstr () );
 
-	const CSphConfig & hConf = cp.m_tConf;
+	const CSphConfig & hConf = g_pCfg.m_tConf;
 
 	if ( !hConf.Exists ( "searchd" ) || !hConf["searchd"].Exists ( "searchd" ) )
 		sphFatal ( "'searchd' config section not found in '%s'", g_sConfigFile.cstr () );
@@ -15801,7 +15802,7 @@ int WINAPI ServiceMain ( int argc, char **argv )
 	{
 		// reparse the config file
 		sphInfo ( "Reloading the config" );
-		if ( !cp.ReParse ( g_sConfigFile.cstr () ) )
+		if ( !g_pCfg.ReParse ( g_sConfigFile.cstr () ) )
 			sphFatal ( "failed to parse config file '%s'", g_sConfigFile.cstr () );
 
 		sphInfo ( "Reconfigure the daemon" );
