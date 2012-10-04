@@ -39,7 +39,7 @@ public:
 	void			Warning ( const char * sTemplate, ... ) __attribute__ ( ( format ( printf, 2, 3 ) ) );
 
 	bool			AddField ( CSphSmallBitvec & dFields, const char * szField, int iLen );
-	bool			ParseFields ( CSphSmallBitvec & uFields, int & iMaxFieldPos );
+	bool			ParseFields ( CSphSmallBitvec & uFields, int & iMaxFieldPos, bool & bIgnore );
 	int				ParseZone ( const char * pZone );
 
 	bool			IsSpecial ( char c );
@@ -374,10 +374,11 @@ bool XQParser_t::AddField ( CSphSmallBitvec & dFields, const char * szField, int
 
 
 /// parse fields block
-bool XQParser_t::ParseFields ( CSphSmallBitvec & dFields, int & iMaxFieldPos )
+bool XQParser_t::ParseFields ( CSphSmallBitvec & dFields, int & iMaxFieldPos, bool & bIgnore )
 {
 	dFields.Unset();
 	iMaxFieldPos = 0;
+	bIgnore = false;
 
 	const char * pPtr = m_pTokenizer->GetBufferPtr ();
 	const char * pLastPtr = m_pTokenizer->GetBufferEnd ();
@@ -411,6 +412,7 @@ bool XQParser_t::ParseFields ( CSphSmallBitvec & dFields, int & iMaxFieldPos )
 	// handle invalid chars
 	if ( !sphIsAlpha(*pPtr) )
 	{
+		bIgnore = true;
 		m_pTokenizer->SetBufferPtr ( pPtr ); // ignore and re-parse (FIXME! maybe warn?)
 		return true;
 	}
@@ -742,9 +744,14 @@ int XQParser_t::GetToken ( YYSTYPE * lvalp )
 			// some specials are especially special
 			if ( sToken[0]=='@' )
 			{
+				bool bIgnore;
+
 				// parse fields operator
-				if ( !ParseFields ( m_tPendingToken.tFieldLimit.dMask, m_tPendingToken.tFieldLimit.iMaxPos ) )
+				if ( !ParseFields ( m_tPendingToken.tFieldLimit.dMask, m_tPendingToken.tFieldLimit.iMaxPos, bIgnore ) )
 					return -1;
+
+				if ( bIgnore )
+					continue;
 
 				if ( m_pSchema->m_dFields.GetLength()!=SPH_MAX_FIELDS )
 					m_tPendingToken.tFieldLimit.dMask.LimitBits ( m_pSchema->m_dFields.GetLength() );
