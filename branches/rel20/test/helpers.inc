@@ -105,7 +105,7 @@ function CreateDB ( $db_drop, $db_create, $db_insert, $custom_insert, $skip )
 }
 
 
-function RunIndexer ( &$error, $params )
+function RunIndexerOnce ( &$error, $params )
 {
 	global $g_locals;
 
@@ -121,6 +121,26 @@ function RunIndexer ( &$error, $params )
 
 	$error = join ( "\n", $error );
 	return ( $retval==0 && !empty($error) ) ? 2 : $retval;
+}
+
+function RunIndexer ( &$error, $params )
+{
+    $INDEXING_TRIES = 5;
+    $INDEXING_TICK = 1000000; // msec
+
+    $tries = 0;
+
+    for ( $i=0; $i<$INDEXING_TRIES; ++$i )
+    {
+        $retval = RunIndexerOnce ( $error, $params );
+        if ( empty($error) || stripos ( $error, "failed to lock")===false )
+               break;
+	usleep ( $INDEXING_TICK );
+        ++$tries;
+    }
+    if ( $tries!=0 )
+        $error = "After $tries tries: $error";
+    return $retval;
 }
 
 
@@ -1167,6 +1187,25 @@ class SphinxConfig
 			return $v;
 	}
 
+        function IsBigNum ( $v )
+        {
+            return is_int($v) && ( $v>2147483647 || $v<-2147483648 );
+        }
+
+        function FixSerialize64 ( $v, & $fixarr )
+        {
+            if ( is_array($v) )
+            {
+		foreach ( $v as $key=>$value )
+                {
+                    if ($this->IsBigNum($key))
+                        $fixarr[] = $key;
+                    $this->FixSerialize64 ( $value, $fixarr );
+                }
+            } else if ($this->IsBigNum($v))
+                $fixarr[] = $v;
+        }
+
 
 	function LoadModel ( $filename )
 	{
@@ -1892,7 +1931,26 @@ class SphinxConfig
 	function WriteModel ( $filename )
 	{
 		if ( IsModelGenMode () )
-			file_put_contents ( $filename, serialize ( $this->_results_model ) );
+                {
+                    $result = serialize ( $this->_results_model );
+                    if (PHP_INT_SIZE>4)
+                    {
+                        $keys = array();
+                        $this->FixSerialize64 ( $this->_results_model, $keys );
+                        if ( sizeof($keys)>0 )
+                        {
+                            $findes=array();
+                            $replaces=array();
+                            foreach ($keys as $key)
+                            {
+                                $findes[]="i:$key";
+                                $replaces[]="s:".strlen($key).":\"$key\"";
+                            }
+                            $result = str_replace ( $findes, $replaces, $result );
+                        }
+                    }
+                    file_put_contents ( $filename, $result );
+                }
 	}
 
 
