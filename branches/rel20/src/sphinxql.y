@@ -214,6 +214,13 @@ where_expr:
 	| where_expr TOK_AND where_item 
 	;
 
+expr_float_unhandled:	
+	| expr_ident '=' const_float
+	| expr_ident TOK_NE const_float
+	| expr_ident '>' const_float
+	| expr_ident '<' const_float
+	;
+	
 where_item:
 	TOK_MATCH '(' TOK_QUOTED_STRING ')'
 		{
@@ -287,10 +294,7 @@ where_item:
 			if ( !pParser->AddIntFilterLTE ( $1.m_sValue, $3.m_iValue ) )
 				YYERROR;
 		}
-	| expr_ident '=' const_float
-	| expr_ident TOK_NE const_float
-	| expr_ident '>' const_float
-	| expr_ident '<' const_float
+	| expr_float_unhandled
 		{
 			yyerror ( pParser, "only >=, <=, and BETWEEN floating-point filter types are supported in this version" );
 			YYERROR;
