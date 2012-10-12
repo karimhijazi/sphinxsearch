@@ -2068,6 +2068,8 @@ protected:
 
 //////////////////////////////////////////////////////////////////////////
 
+extern int g_iThreadStackSize;
+
 /// my thread handle and thread func magic
 #if USE_WINDOWS
 typedef HANDLE SphThread_t;
@@ -2106,9 +2108,6 @@ void * sphMyStack ();
 
 /// get size of used stack
 int64_t sphGetStackUsed();
-
-/// get the size of my thread's stack
-int sphMyStackSize ();
 
 /// set the size of my thread's stack
 void sphSetMyStackSize ( int iStackSize );

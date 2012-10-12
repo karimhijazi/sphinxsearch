@@ -2983,12 +2983,6 @@ ISphExpr * ExprParser_t::Parse ( const char * sExpr, const CSphSchema & tSchema,
 	ESphAttr eAttrType = m_dNodes[m_iParsed].m_eRetType;
 	assert ( eAttrType==SPH_ATTR_INTEGER || eAttrType==SPH_ATTR_BIGINT || eAttrType==SPH_ATTR_FLOAT );
 
-	// perform optimizations
-	Optimize ( m_iParsed );
-#if 0
-	Dump ( m_iParsed );
-#endif
-
 	// check expression stack
 	if ( m_dNodes.GetLength()>100 )
 	{
@@ -3008,9 +3002,9 @@ ISphExpr * ExprParser_t::Parse ( const char * sExpr, const CSphSchema & tSchema,
 				dNodes.Add ( tExpr.m_iLeft );
 		}
 
-#define SPH_EXPRNODE_STACK_SIZE 110
+#define SPH_EXPRNODE_STACK_SIZE 160
 		int64_t iExprStack = sphGetStackUsed() + iMaxHeight*SPH_EXPRNODE_STACK_SIZE;
-		if ( sphMyStackSize()<=iExprStack )
+		if ( g_iThreadStackSize<=iExprStack )
 		{
 			sError.SetSprintf ( "query too complex, not enough stack (thread_stack_size=%dK or higher required)",
 				(int)( ( iExprStack + 1024 - ( iExprStack%1024 ) ) / 1024 ) );
@@ -3018,6 +3012,11 @@ ISphExpr * ExprParser_t::Parse ( const char * sExpr, const CSphSchema & tSchema,
 		}
 	}
 
+	// perform optimizations
+	Optimize ( m_iParsed );
+#if 0
+	Dump ( m_iParsed );
+#endif
 
 	// create evaluator
 	ISphExpr * pRes = CreateTree ( m_iParsed );

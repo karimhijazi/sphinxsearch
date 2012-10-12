@@ -14356,7 +14356,7 @@ bool sphCheckQueryHeight ( const XQNode_t * pRoot, CSphString & sError )
 		iHeight = sphQueryHeightCalc ( pRoot );
 
 	int64_t iQueryStack = sphGetStackUsed() + iHeight*SPH_EXTNODE_STACK_SIZE;
-	bool bValid = ( sphMyStackSize()>=iQueryStack );
+	bool bValid = ( g_iThreadStackSize>=iQueryStack );
 	if ( !bValid )
 		sError.SetSprintf ( "query too complex, not enough stack (thread_stack_size=%dK or higher required)",
 			(int)( ( iQueryStack + 1024 - ( iQueryStack%1024 ) ) / 1024 ) );
