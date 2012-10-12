@@ -9302,7 +9302,7 @@ void HandleCommandExcerpt ( int iSock, int iVer, InputBuffer_c & tReq )
 	tOut.SendInt ( iRespLen );
 	ARRAY_FOREACH ( i, dQueries )
 	{
-		if ( dQueries[i].m_sRes )
+		if ( dQueries[i].m_sRes && strcmp ( dQueries[i].m_sRes, "" ) )
 		{
 			tOut.SendString ( dQueries[i].m_sRes );
 			SafeDeleteArray ( dQueries[i].m_sRes );

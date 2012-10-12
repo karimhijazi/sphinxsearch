@@ -3037,6 +3037,12 @@ char * sphBuildExcerpt ( ExcerptQuery_t & tOptions, const CSphIndex * pIndex, co
 	if ( tOptions.m_iLoadFiles )
 	{
 		CSphAutofile tFile;
+		if ( tOptions.m_sSource.IsEmpty() )
+		{
+			sError.SetSprintf ( "can not open file with an empty name" );
+			return NULL;
+		}
+
 		if ( tFile.Open ( tOptions.m_sSource.cstr(), SPH_O_READ, sError )<0 )
 			return NULL;
 
