@@ -7574,9 +7574,8 @@ There's a fixed size limit of 4 MB per value. Also, <filename>searchd</filename>
 will currently cache all the values in RAM, which is an additional implicit limit.
 </para>
 <para>
-As of 1.10-beta, strings can only be used for storage and retrieval.
-They can not participate in expressions, be used for filtering, sorting,
-or grouping (ie. in WHERE, ORDER or GROUP clauses). Note that attributes
+Starting from 2.0.1-beta string attributes can be used for sorting and
+grouping(ORDER BY, GROUP BY, WITHING GROUP ORDER BY). Note that attributes
 declared using <option>sql_attr_string</option> will <b>not</b> be full-text
 indexed; you can use <link linkend="conf-sql-field-string">sql_field_string</link>
 directive for that.
