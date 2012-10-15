@@ -4139,6 +4139,9 @@ void PrepareQueryEmulation ( CSphQuery * pQuery )
 	if ( pQuery->m_eMode==SPH_MATCH_BOOLEAN )
 		pQuery->m_eRanker = SPH_RANK_NONE;
 
+	if ( pQuery->m_eMode==SPH_MATCH_FULLSCAN )
+		pQuery->m_sQuery = "";
+
 	if ( pQuery->m_eMode!=SPH_MATCH_ALL && pQuery->m_eMode!=SPH_MATCH_ANY && pQuery->m_eMode!=SPH_MATCH_PHRASE )
 		return;
 
