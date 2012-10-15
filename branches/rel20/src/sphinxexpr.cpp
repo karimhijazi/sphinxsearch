@@ -545,7 +545,7 @@ DECLARE_TERNARY ( Expr_Mul3_c,	FIRST*SECOND*THIRD,					INTFIRST*INTSECOND*INTTHI
 		virtual int64_t Int64Eval ( const CSphMatch & tMatch ) const { return IntEval(tMatch); } \
 		virtual int IntEval ( const CSphMatch & tMatch ) const \
 		{ \
-			time_t ts = (time_t)FIRST; \
+			time_t ts = (time_t)INTFIRST;	\
 			struct tm s; \
 			localtime_r ( &ts, &s ); \
 			return _expr; \
