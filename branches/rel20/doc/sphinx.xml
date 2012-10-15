@@ -1331,8 +1331,7 @@ showstopper-class issues are known, there still are a few known usage quirks.
 Those quirks are listed in this section.
 </para>
 <itemizedlist>
-<listitem><para>Prefix and infix indexing are not supported yet.</para></listitem>
-<listitem><para>MVAs are not supported yet.</para></listitem>
+<listitem><para>Infix indexing is not supported yet.</para></listitem>
 <listitem><para>Disk chunks optimization routine is not implemented yet.</para></listitem>
 <listitem><para>On initial index creation, attributes are reordered by type,
 in the following order: uint, bigint, float, timestamp, string. So when
