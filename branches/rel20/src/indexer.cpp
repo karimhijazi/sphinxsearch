@@ -1698,7 +1698,7 @@ int main ( int argc, char ** argv )
 	{
 		CSphConfigSection & hIndexer = hConf["indexer"]["indexer"];
 
-		g_iMemLimit = hIndexer.GetSize ( "mem_limit", 0 );
+		g_iMemLimit = hIndexer.GetSize ( "mem_limit", 32*1024*1024 );
 		g_iMaxXmlpipe2Field = hIndexer.GetSize ( "max_xmlpipe2_field", 2*1024*1024 );
 		g_iWriteBuffer = hIndexer.GetSize ( "write_buffer", 1024*1024 );
 		g_iMaxFileFieldBuffer = Max ( 1024*1024, hIndexer.GetSize ( "max_file_field_buffer", 8*1024*1024 ) );
