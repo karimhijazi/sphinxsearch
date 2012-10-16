@@ -43,7 +43,7 @@ bool			g_bRotate		= false;
 bool			g_bRotateEach	= false;
 bool			g_bBuildFreqs	= false;
 
-int				g_iMemLimit				= 0;
+int				g_iMemLimit				= 32*1024*1024;
 int				g_iMaxXmlpipe2Field		= 0;
 int				g_iWriteBuffer			= 0;
 int				g_iMaxFileFieldBuffer	= 1024*1024;
@@ -1492,7 +1492,7 @@ bool SendRotate ( const CSphConfig & hConf, bool bForce )
 		BYTE uWrite = 0;
 		BOOL bResult = WriteFile ( hPipe, &uWrite, 1, &uWritten, NULL );
 		if ( bResult )
-			fprintf ( stdout, "rotating indices: succesfully sent SIGHUP to searchd (pid=%d).\n", iPID );
+			fprintf ( stdout, "rotating indices: successfully sent SIGHUP to searchd (pid=%d).\n", iPID );
 		else
 			fprintf ( stdout, "WARNING: failed to send SIGHUP to searchd (pid=%d, GetLastError()=%d)\n", iPID, GetLastError () );
 
@@ -1504,7 +1504,7 @@ bool SendRotate ( const CSphConfig & hConf, bool bForce )
 	if ( iErr==0 )
 	{
 		if ( !g_bQuiet )
-			fprintf ( stdout, "rotating indices: succesfully sent SIGHUP to searchd (pid=%d).\n", iPID );
+			fprintf ( stdout, "rotating indices: successfully sent SIGHUP to searchd (pid=%d).\n", iPID );
 	} else
 	{
 		switch ( errno )
@@ -1693,12 +1693,11 @@ int main ( int argc, char ** argv )
 	if ( !hConf ( "source" ) )
 		sphDie ( "no indexes found in config file '%s'", sOptConfig );
 
-	g_iMemLimit = 0;
 	if ( hConf("indexer") && hConf["indexer"]("indexer") )
 	{
 		CSphConfigSection & hIndexer = hConf["indexer"]["indexer"];
 
-		g_iMemLimit = hIndexer.GetSize ( "mem_limit", 32*1024*1024 );
+		g_iMemLimit = hIndexer.GetSize ( "mem_limit", g_iMemLimit );
 		g_iMaxXmlpipe2Field = hIndexer.GetSize ( "max_xmlpipe2_field", 2*1024*1024 );
 		g_iWriteBuffer = hIndexer.GetSize ( "write_buffer", 1024*1024 );
 		g_iMaxFileFieldBuffer = Max ( 1024*1024, hIndexer.GetSize ( "max_file_field_buffer", 8*1024*1024 ) );

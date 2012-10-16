@@ -2979,7 +2979,7 @@ struct AgentConn_t : public AgentDesc_t
 	int				m_iSock;		///< socket number, -1 if not connected
 	AgentState_e	m_eState;		///< current state
 
-	bool			m_bSuccess;		///< whether last request was succesful (ie. there are available results)
+	bool			m_bSuccess;		///< whether last request was successful (ie. there are available results)
 	CSphString		m_sFailure;		///< failure message
 
 	int				m_iReplyStatus;	///< reply status code
@@ -7328,7 +7328,7 @@ void SearchHandler_c::RunSubset ( int iStart, int iEnd )
 		tRes.m_dTag2Pools[0].m_pMva = m_dMvaStorage.Begin();
 		tRes.m_dTag2Pools[0].m_pStrings = m_dStringsStorage.Begin();
 
-		// if there were no succesful searches at all, this is an error
+		// if there were no successful searches at all, this is an error
 		if ( !tRes.m_iSuccesses )
 		{
 			StrBuf_t sFailures;
@@ -11893,7 +11893,7 @@ void HandleMysqlAttach ( const SqlStmt_t & tStmt, NetOutputBuffer_c & tOut, BYTE
 
 	pTo->Unlock();
 
-	// after a succesfull Attach() RT index owns it
+	// after a successfull Attach() RT index owns it
 	// so we need to create dummy disk index until further notice
 	pFrom->m_pIndex = NULL;
 	pFrom->m_bEnabled = false;
@@ -14334,7 +14334,7 @@ void ServiceInstall ( int argc, char ** argv )
 
 	} else
 	{
-		sphInfo ( "Service '%s' installed succesfully.", g_sServiceName );
+		sphInfo ( "Service '%s' installed successfully.", g_sServiceName );
 	}
 
 	CSphString sDesc;
@@ -14376,7 +14376,7 @@ void ServiceDelete ()
 	if ( !bRes )
 		sphFatal ( "DeleteService() failed: %s", WinErrorInfo() );
 	else
-		sphInfo ( "Service '%s' deleted succesfully.", g_sServiceName );
+		sphInfo ( "Service '%s' deleted successfully.", g_sServiceName );
 }
 #endif // USE_WINDOWS
 
@@ -15664,7 +15664,7 @@ int WINAPI ServiceMain ( int argc, char **argv )
 
 		if ( bTerminatedOk )
 		{
-			sphInfo ( "stop: succesfully terminated pid %d", iPid );
+			sphInfo ( "stop: successfully terminated pid %d", iPid );
 			exit ( 0 );
 		} else
 			sphFatal ( "stop: error terminating pid %d", iPid );
