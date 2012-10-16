@@ -381,8 +381,7 @@ opt_group_clause:
 group_clause:
 	TOK_GROUP TOK_BY expr_ident
 		{
-			pParser->m_pQuery->m_eGroupFunc = SPH_GROUPBY_ATTR;
-			pParser->m_pQuery->m_sGroupBy = $3.m_sValue;
+			pParser->SetGroupBy ( $3.m_sValue );
 		}
 	;
 

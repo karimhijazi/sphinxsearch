@@ -7763,6 +7763,7 @@ public:
 	bool			AddIntFilterGTE ( const CSphString & sAttr, int64_t iVal );
 	bool			AddIntFilterLTE ( const CSphString & sAttr, int64_t iVal );
 	bool			AddUservarFilter ( const CSphString & sCol, const CSphString & sVar, bool bExclude );
+	void			SetGroupBy ( const CSphString & sGroupBy );
 	bool			AddDistinct ( SqlNode_t * pNewExpr, SqlNode_t * pStart, SqlNode_t * pEnd );
 	CSphFilterSettings * AddFilter ( const CSphString & sCol, ESphFilter eType );
 	inline CSphFilterSettings * AddValuesFilter ( const SqlNode_t& sCol )
@@ -8107,6 +8108,13 @@ bool SqlParser_c::AddItem ( const char * pToken, SqlNode_t * pStart, SqlNode_t *
 	tItem.m_sExpr.ToLower();
 	AutoAlias ( tItem, pStart, pEnd );
 	return SetNewSyntax();
+}
+
+void SqlParser_c::SetGroupBy ( const CSphString & sGroupBy )
+{
+	m_pQuery->m_eGroupFunc = SPH_GROUPBY_ATTR;
+	m_pQuery->m_sGroupBy = sGroupBy;
+	m_pQuery->m_sGroupBy.ToLower();
 }
 
 bool SqlParser_c::AddDistinct ( SqlNode_t * pNewExpr, SqlNode_t * pStart, SqlNode_t * pEnd )
