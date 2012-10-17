@@ -569,12 +569,17 @@ show_variable:
 
 //////////////////////////////////////////////////////////////////////////
 
-set_value:
+simple_set_value:
 	TOK_IDENT
 	| TOK_NULL
 	| TOK_QUOTED_STRING
 	| TOK_CONST_INT
 	| TOK_CONST_FLOAT
+	;
+
+set_value:
+	simple_set_value
+	| set_value '-' simple_set_value
 	;
 
 set_stmt:
