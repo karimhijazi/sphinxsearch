@@ -397,6 +397,11 @@ bool ParseMultiAttr ( const char * sBuf, CSphColumnInfo & tAttr, const char * sS
 	if ( hSource.Exists(_key) && hSource[_key].intval() ) \
 		_arg = hSource[_key].intval();
 
+// get int64_t
+#define LOC_GETL(_arg,_key) \
+	if ( hSource.Exists(_key) ) \
+		_arg = hSource[_key].int64val();
+
 // get bool
 #define LOC_GETB(_arg,_key) \
 	if ( hSource.Exists(_key) ) \
@@ -586,7 +591,7 @@ bool SqlParamsConfigure ( CSphSourceParams_SQL & tParams, const CSphConfigSectio
 	LOC_GETA ( tParams.m_dQueryPost,		"sql_query_post" );
 	LOC_GETS ( tParams.m_sQueryRange,		"sql_query_range" );
 	LOC_GETA ( tParams.m_dQueryPostIndex,	"sql_query_post_index" );
-	LOC_GETI ( tParams.m_iRangeStep,		"sql_range_step" );
+	LOC_GETL ( tParams.m_iRangeStep,		"sql_range_step" );
 	LOC_GETS ( tParams.m_sQueryKilllist,	"sql_query_killlist" );
 
 	LOC_GETI ( tParams.m_iRangedThrottle,	"sql_ranged_throttle" );
@@ -837,6 +842,7 @@ CSphSource * SpawnSource ( const CSphConfigSection & hSource, const char * sSour
 #undef LOC_CHECK
 #undef LOC_GETS
 #undef LOC_GETI
+#undef LOC_GETL
 #undef LOC_GETA
 
 //////////////////////////////////////////////////////////////////////////
