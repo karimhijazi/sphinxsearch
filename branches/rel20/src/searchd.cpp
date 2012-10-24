@@ -14061,6 +14061,13 @@ void CheckReopen ()
 		}
 	}
 
+#if !USE_WINDOWS
+	if ( g_eWorkers==MPM_PREFORK )
+		ARRAY_FOREACH ( i, g_dChildren )
+			kill ( g_dChildren[i], SIGUSR1 );
+#endif
+
+
 	g_bGotSigusr1 = 0;
 }
 
