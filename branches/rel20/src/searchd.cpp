@@ -14403,7 +14403,7 @@ void ShowHelp ()
 		"\n"
 		"Options are:\n"
 		"-h, --help\t\tdisplay this help message\n"
-		"-c, -config <file>\tread configuration from specified file\n"
+		"-c, --config <file>\tread configuration from specified file\n"
 		"\t\t\t(default is sphinx.conf)\n"
 		"--stop\t\t\tsend SIGTERM to currently running searchd\n"
 		"--stopwait\t\tsend SIGTERM and wait until actual exit\n"
