@@ -4024,8 +4024,8 @@ SELECT
     FROM index [, index2 ...]
     [WHERE where_condition]
     [GROUP BY {col_name | expr_alias}]
-    [ORDER BY {col_name | expr_alias} {ASC | DESC} [, ...]]
     [WITHIN GROUP ORDER BY {col_name | expr_alias} {ASC | DESC}]
+    [ORDER BY {col_name | expr_alias} {ASC | DESC} [, ...]]
     [LIMIT offset, row_count]
     [OPTION opt_name = opt_value [, ...]]
 </programlisting>
