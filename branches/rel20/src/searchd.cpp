@@ -5745,9 +5745,6 @@ bool MinimizeAggrResult ( AggrResult_t & tRes, const CSphQuery & tQuery, bool bH
 			{
 				if ( *tCol.m_sName.cstr()=='@' )
 				{
-					CSphColumnInfo & tItem = tFrontendSchema.GetWAttrs().Add();
-					tItem.m_iIndex = tInternalSchema.GetAttrsCount();
-					tItem.m_sName = tCol.m_sName;
 					ARRAY_FOREACH ( j, (*pSelectItems) )
 						if ( tFrontendSchema.GetAttr(j).m_iIndex<0
 							&& ( (*pSelectItems)[j].m_sExpr.cstr() && (*pSelectItems)[j].m_sExpr==tCol.m_sName ) )
@@ -5758,6 +5755,12 @@ bool MinimizeAggrResult ( AggrResult_t & tRes, const CSphQuery & tQuery, bool bH
 							dKnownItems.Add(j);
 							++iKnownItems;
 						}
+					if ( tFrontendSchema.GetAttr ( tCol.m_sName.cstr() )==NULL )
+					{
+						CSphColumnInfo & tItem = tFrontendSchema.GetWAttrs().Add();
+						tItem.m_iIndex = tInternalSchema.GetAttrsCount();
+						tItem.m_sName = tCol.m_sName;
+					}
 				} else
 					ARRAY_FOREACH ( j, (*pSelectItems) )
 						if ( tFrontendSchema.GetAttr(j).m_iIndex<0
