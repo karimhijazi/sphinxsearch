@@ -5313,7 +5313,8 @@ bool RankerState_Expr_fn::Init ( int iFields, const int * pWeights, ExtRanker_c 
 	// parse expression
 	bool bUsesWeight;
 	ExprRankerHook_c tHook ( this );
-	m_pExpr = sphExprParse ( m_sExpr, *m_pSchema, &m_eExprType, &bUsesWeight, sError, NULL, &tHook );
+	CSphSchema tCheckSchema;
+	m_pExpr = sphExprParse ( m_sExpr, *m_pSchema, &m_eExprType, &bUsesWeight, sError, &tCheckSchema, &tHook );
 	if ( !m_pExpr )
 		return false;
 	if ( m_eExprType!=SPH_ATTR_INTEGER && m_eExprType!=SPH_ATTR_FLOAT )
@@ -5330,6 +5331,17 @@ bool RankerState_Expr_fn::Init ( int iFields, const int * pWeights, ExtRanker_c 
 	{
 		sError = tHook.m_sCheckError;
 		return false;
+	}
+	// following check is relevant for rel20 only,
+	// because this feature was implemented in trunk
+	for ( int i=0; i<tCheckSchema.GetAttrsCount(); i++ )
+	{
+		ESphAttr eType = tCheckSchema.GetAttr(i).m_eAttrType;
+		if ( eType==SPH_ATTR_STRING || eType==SPH_ATTR_UINT32SET || eType==SPH_ATTR_INT64SET )
+		{
+			sError = "string and MVA attributes prohibited at ranking expression";
+			return false;
+		}
 	}
 
 	// all seems ok
