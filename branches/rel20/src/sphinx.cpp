@@ -14973,6 +14973,10 @@ bool CSphIndex_VLN::MultiQueryEx ( int iQueries, const CSphQuery * pQueries, CSp
 		CSphQueryNodeCache tNodeCache ( iCommonSubtrees, m_iMaxCachedDocs, m_iMaxCachedHits );
 		bResult = false;
 		for ( int j=0; j<iQueries; j++ )
+		{
+			// fullscan case
+			if ( pQueries[j].m_sQuery.IsEmpty() )
+				continue;
 			if ( dXQ[j].m_pRoot && ppSorters[j]
 					&& ParsedMultiQuery ( &pQueries[j], ppResults[j], 1, &ppSorters[j], dXQ[j], pDict, pExtraFilters, &tNodeCache, iTag ) )
 			{
@@ -14980,6 +14984,7 @@ bool CSphIndex_VLN::MultiQueryEx ( int iQueries, const CSphQuery * pQueries, CSp
 				ppResults[j]->m_iMultiplier = iCommonSubtrees ? iQueries : 1;
 			} else
 				ppResults[j]->m_iMultiplier = -1;
+		}
 	}
 
 	SafeDelete ( pTokenizer );
