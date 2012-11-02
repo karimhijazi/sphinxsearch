@@ -1237,7 +1237,7 @@ bool			sphSortGetStringRemap ( const CSphSchema & tSorterSchema, const CSphSchem
 bool			sphIsSortStringInternal ( const char * sColumnName );
 
 bool			sphWriteThrottled ( int iFD, const void * pBuf, int64_t iCount, const char * sName, CSphString & sError );
-void			sphMergeStats ( CSphQueryResultMeta & tDstResult, const SmallStringHash_T<CSphQueryResultMeta::WordStat_t> & hSrc );
+void			sphCheckWordStats ( const SmallStringHash_T<CSphQueryResultMeta::WordStat_t> & hDst, const SmallStringHash_T<CSphQueryResultMeta::WordStat_t> & hSrc, const char * sIndex, CSphString & sWarning );
 bool			sphCheckQueryHeight ( const struct XQNode_t * pRoot, CSphString & sError );
 void			sphTransformExtendedQuery ( XQNode_t ** ppNode );
 

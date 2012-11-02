@@ -15077,11 +15077,15 @@ bool CSphIndex_VLN::ParsedMultiQuery ( const CSphQuery * pQuery, CSphQueryResult
 	// bind weights
 	tCtx.BindWeights ( pQuery, m_tSchema, iIndexWeight );
 
+	SmallStringHash_T<CSphQueryResultMeta::WordStat_t> hPrevWordStat = pResult->m_hWordStats;
+
 	// setup query
 	// must happen before index-level reject, in order to build proper keyword stats
 	CSphScopedPtr<ISphRanker> pRanker ( sphCreateRanker ( tXQ, pQuery, pResult, tTermSetup, tCtx ) );
 	if ( !pRanker.Ptr() )
 		return false;
+
+	sphCheckWordStats ( hPrevWordStat, pResult->m_hWordStats, m_sIndexName.cstr(), pResult->m_sWarning );
 
 	// empty index, empty response!
 	if ( m_bIsEmpty )
@@ -24561,6 +24565,34 @@ void CWordlist::GetPrefixedWords ( const char * sWord, int iWordLen, CSphVector<
 int CSphStrHashFunc::Hash ( const CSphString & sKey )
 {
 	return sKey.IsEmpty() ? 0 : sphCRC32 ( (const BYTE *)sKey.cstr() );
+}
+
+
+void sphCheckWordStats ( const SmallStringHash_T<CSphQueryResultMeta::WordStat_t> & hDst, const SmallStringHash_T<CSphQueryResultMeta::WordStat_t> & hSrc, const char * sIndex, CSphString & sWarning )
+{
+	if ( !hDst.GetLength() )
+		return;
+
+	bool bHasHead = false;
+	hSrc.IterateStart();
+	while ( hSrc.IterateNext() )
+	{
+		const CSphQueryResultMeta::WordStat_t * pDstStat = hDst ( hSrc.IterateGetKey() );
+		const CSphQueryResultMeta::WordStat_t & tSrcStat = hSrc.IterateGet();
+
+		// all indexes should produce same terms for same query
+		if ( !pDstStat && !tSrcStat.m_bExpanded )
+		{
+			if ( !bHasHead )
+			{
+				sWarning.SetSprintf ( "index '%s': query word(s) mismatch: %s", sIndex, hSrc.IterateGetKey().cstr() );
+				bHasHead = true;
+			} else
+			{
+				sWarning.SetSprintf ( "%s, %s", sWarning.cstr(), hSrc.IterateGetKey().cstr() );
+			}
+		}
+	}
 }
 
 
