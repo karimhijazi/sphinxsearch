@@ -2851,8 +2851,24 @@ inline bool FSMmultinear::HitFSM ( const ExtHit_t* pHit, ExtHit_t* dTarget )
 	// skip dupe hit (may be emitted by OR node, for example)
 	if ( m_uLastP==uHitpos )
 	{
-		// check if the hit is subset of another one
-		if ( m_uPrelastP && m_uLastML < pHit->m_uMatchlen )
+		// lets choose leftmost (in query) from all dupes. 'a NEAR/2 a' case
+		if ( m_bTwofer && uNpos<m_uFirstNpos )
+		{
+			m_uFirstQpos = uQpos;
+			m_uFirstNpos = uNpos;
+			return false;
+		} else if ( !m_bTwofer && uNpos<m_dRing [ RingTail() ].m_uNodepos ) // 'a NEAR/2 a NEAR/2 a' case
+		{
+			WORD * p = const_cast<WORD *>( m_dNpos.BinarySearch ( uNpos ) );
+			if ( !p )
+			{
+				p = const_cast<WORD *>( m_dNpos.BinarySearch ( m_dRing [ RingTail() ].m_uNodepos ) );
+				*p = uNpos;
+				m_dRing [ RingTail() ].m_uNodepos = uNpos;
+				m_dRing [ RingTail() ].m_uQuerypos = uQpos;
+			}
+			return false;
+		} else if ( m_uPrelastP && m_uLastML < pHit->m_uMatchlen ) // check if the hit is subset of another one
 		{
 			// roll back pre-last to check agains this new hit.
 			m_uLastML = m_uPrelastML;
