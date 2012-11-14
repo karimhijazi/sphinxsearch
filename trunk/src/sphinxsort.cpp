@@ -15,6 +15,7 @@
 
 #include "sphinx.h"
 #include "sphinxint.h"
+#include "sphinxjson.h"
 
 #include <time.h>
 #include <math.h>
@@ -624,7 +625,7 @@ GROUPER_END
 template <class PRED>
 class CSphGrouperString : public CSphGrouperAttr, public PRED
 {
-private:
+protected:
 	const BYTE * m_pStringBase;
 
 public:
@@ -662,6 +663,71 @@ public:
 	virtual bool CanMulti () const { return false; }
 };
 
+
+class Binarycc;
+	}
+};
+
+
+class Utf8CIHash_fn
+{
+public:
+	uint64_t Hash ( const BYTE * pStr, int iLen ) const
+	{
+		a		return sphFNV64 ( pStr, iLen );
+	}
+};
+
+
+/// lookup JSON key, group by looked up value
+class CSphGrouperJson : public CSphGrouperString<BinaryHash_fn>
+{
+protected:
+	JsonKey_t m_tKey;
+
+public:
+	explicit CSphGrouperJson ( const CSphAttrLocator & tLoc, const char * sKey )
+		: CSphGrouperString<BinaryHash_fn> ( tLoc )
+		, m_tKey ( sKey )
+	{}
+
+	virtual SphGroupKey_t KeyFromValue ( SphAttr_t uValue ) const
+	{
+		if ( !m_pStringBase || !uValue )
+			return 0;
+
+		const BYTE * pStr = NULL;
+		int iLen = sphUnpackStr ( m_pStringBase+uValue, &pStr );
+
+		if ( !pStr || !iLen )
+			return 0;
+
+		const BYTE * pValue;
+		ESphJsonType eRes = sphJsonFindKey ( &pValue, pStr, m_tKey );
+
+		char sBuf[32];
+		switch ( eRes )
+		{
+			case JSON_STRING:
+				iLen = sphJsonUnpackInt ( &pValue );
+				return sphFNV64 ( pValue, iLen );
+			case JSON_INT32:
+				// FIXME! OPTIMIZE!
+				snprintf ( sBuf, sizeof(sBuf), "%d", sphJsonLoadInt ( &pValue ) );
+				break;
+			case JSON_INT64:
+				// FIXME! OPTIMIZE!
+				snprintf ( sBuf, sizeof(sBuf), "%lld", sphJsonLoadBigint ( &pValue ) );
+				break;
+			case JSON_DOUBLE:
+				snprintf ( sBuf, sizeof(sBuf), "%f", sphQW2D ( sphJsonLoadBigint ( &pValue ) ) );
+				break;
+			default:
+				return 0;
+		}
+		return sphFNV64 ( (const BYTE*)sBuf );
+	}
+};
 
 //////////////////////////////////////////////////////////////////////////
 
@@ -2406,38 +2472,73 @@ static bool SetupGroupbySettings ( const CSphQuery * pQuery, const CSphSchema & 
 	if ( pQuery->m_eGroupFunc==SPH_GROUPBY_ATTRPAIR )
 	{
 		sError.SetSprintf ( "SPH_GROUPBY_ATTRPAIR is not supported any more (just group on 'bigint' attribute)" );
-		return false;
-	}
-
-	// setup groupby attr
-	int iGroupBy = tSchema.GetAttrIndex ( pQuery->m_sGroupBy.cstr() );
-	if ( iGroupBy<0 )
+FIXME? common code here and in sphinxfilter.cpp
+	const char * pDot = strchr ( pQuery->m_sGroupBy.cstr(), '.' );
+	if ( pDot )
 	{
-		sError.SetSprintf ( "group-by attribute '%s' not found", pQuery->m_sGroupBy.cstr() );
-		return false;
-	}
+		// got a dot, check for json attr
+		CSphString sCol = pQuery->m_sGroupBy;
+		char * pCol = const_cast<char*> ( pQuery->m_sGroupBy.cstr() );
+		char * pInCol = pCol + ( pDot - pQuery->m_sGroupBy.cstr() );
+		*pInCol++ = '\0'; // zero out that dot
 
-	ESphAttr eType = tSchema.GetAttr ( iGroupBy ).m_eAttrType;
-	CSphAttrLocator tLoc = tSchema.GetAttr ( iGroupBy ).m_tLocator;
-	switch ( pQuery->m_eGroupFunc )
+		const int iAttr = tSchema.GetAttrIndex ( pCol );
+		if ( iAttr<0 )
+		{
+			sError.SetSprintf ( "groupby: no such attribute '%s'", pCol );
+			return false;
+		}
+
+		if ( tSchema.GetAttr(iAttr).m_eAttrType!=SPH_ATTR_JSON )
+		{
+			sError.SetSprintf ( "groupby: attribute '%s' does not have subfields (must be sql_attr_json)", pCol );
+			return false;
+		}
+
+		if ( pQuery->m_eGroupFunc!=SPH_GROUPBY_ATTR )
+		{
+			sError.SetSprintf ( "groupby: legacy groupby modes are not supported on JSON attributes" );
+			return false;
+		}
+
+		// FIXME! handle collations here?
+		tSettings.m_pGrouper = new CSphGrouperJson ( tSchema.GetAttr(iAttr).m_tLocator, pInCol );
+
+	} else
 	{
-		case SPH_GROUPBY_DAY:		tSettings.m_pGrouper = new CSphGrouperDay ( tLoc ); break;
-		case SPH_GROUPBY_WEEK:		tSettings.m_pGrouper = new CSphGrouperWeek ( tLoc ); break;
-		case SPH_GROUPBY_MONTH:		tSettings.m_pGrouper = new CSphGrouperMonth ( tLoc ); break;
-		case SPH_GROUPBY_YEAR:		tSettings.m_pGrouper = new CSphGrouperYear ( tLoc ); break;
-		case SPH_GROUPBY_ATTR:
-			if ( eType!=SPH_ATTR_STRING )
-				tSettings.m_pGrouper = new CSphGrouperAttr ( tLoc );
-			else
-				tSettings.m_pGrouper = sphCreateGrouperString ( tLoc, pQuery->m_eCollation );
-			break;
-		default:
-			sError.SetSprintf ( "invalid group-by mode (mode=%d)", pQuery->m_eGroupFunc );
+		// setup groupby attr
+		int iGroupBy = tSchema.GetAttrIndex ( pQuery->m_sGroupBy.cstr() );
+		if ( iGroupBy<0 )
+		{
+			sError.SetSprintf ( "group-by attribute '%s' not found", pQuery->m_sGroupBy.cstr() );
+			return false;
+		}
+
+		ESphAttr eType = tSchema.GetAttr ( iGroupBy ).m_eAttrType;
+		CSphAttrLocator tLoc = tSchema.GetAttr ( iGroupBy ).m_tLocator;
+		switch ( pQuery->m_eGroupFunc )
+		{
+			case SPH_GROUPBY_DAY:		tSettings.m_pGrouper = new CSphGrouperDay ( tLoc ); break;
+	perDay ( tLoc ); break;
+		case SPH_GROUPBY_WEEK:		tSettings.m_pGrouper = new CSphGrouper	case SPH_GROUPBY_MONTH:		tSettings.m_pGrouper = new CSphGrouperMonth ( tLoc ); break;
+			case SPH_GROUPBY_YEAR:		tSettings.m_pGrouper = new CSphGrouperYear ( tLoc ); break;
+			case SPH_GROUPBY_ATTR:
+				if ( eType!=SPH_ATTR_STRING )
+					tSettings.m_pGrouper = new CSphGrouperAttr ( tLoc );
+				else
+					tSettings.m_pGrouper = sphCreateGrouperString ( tLoc, pQuery->m_eCollation );
+				break;
+			default:
+				sError.SetSprintf ( "invalid group-by mode (mode=%d)", pQuery->m_eGroupFunc );
+				return false;
+		}
+
+	);
 			return false;
 	}
 
-	tSettings.m_bMVA = ( eType==SPH_ATTR_UINT32SET || eType==SPH_ATTR_INT64SET );
-	tSettings.m_bMva64 = ( eType==SPH_ATTR_INT64SET );
+	tSettings.m_bMVA = ( eType==SPH_ATTR_UINT32SET || eType	tSettings.m_bMva64 = ( eType==SPH_ATTR_INT64SET );
+	}pe==SPH_ATTR_INT64SET );
 
 	// setup distinct attr
 	if ( !pQuery->m_sGroupDistinct.IsEmpty() )
@@ -2951,19 +3052,7 @@ public:
 			iCode = CollateUTF8CI ( iCode );
 			uAcc = sphFNV64 ( (const BYTE *)&iCode, 4, uAcc );
 		}
-
-		return uAcc;
-	}
-};
-
-
-class BinaryHash_fn
-{
-public:
-	uint64_t Hash ( const BYTE * pStr, int iLen ) const
-	{
-		assert ( pStr && iLen );
-		return sphFNV64 ( pStr, iLen );
+( pStr, iLen );
 	}
 };
 
@@ -3419,7 +3508,7 @@ ISphMatchSorter * sphCreateQueue ( const CSphQuery * pQuery, const CSphSchema & 
 	} else
 	{
 		// check sort-by attribute
-		if ( pQuery->m_eSort!=SPH_SORT_RELEVANCE )
+		if ( pQuery->m_eSo
 		{
 			int iSortAttr = tSorterSchema.GetAttrIndex ( pQuery->m_sSortBy.cstr() );
 			if ( iSortAttr<0 )
@@ -3484,7 +3573,8 @@ ISphMatchSorter * sphCreateQueue ( const CSphQuery * pQuery, const CSphSchema & 
 		bUsesAttrs |= SetupSortStringRemap ( tSorterSchema, tStateGroup );
 	}
 
-	/////////////ue
+	///////////////////
+	// spawn the queue
 	///////////////////
 
 	if ( !bGotGroupby )
