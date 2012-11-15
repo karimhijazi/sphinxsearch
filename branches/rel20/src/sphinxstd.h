@@ -62,6 +62,9 @@ typedef int __declspec("SAL_nokernel") __declspec("SAL_nodriver") __prefast_flag
 #include <sys/mman.h>
 #include <errno.h>
 #include <pthread.h>
+#ifdef __FreeBSD__
+#include <semaphore.h>
+#endif
 #endif
 
 /////////////////////////////////////////////////////////////////////////////
@@ -2032,7 +2035,11 @@ public:
 protected:
 #if !USE_WINDOWS
 	CSphSharedBuffer<BYTE>		m_pStorage;
+#ifdef __FreeBSD__
+	sem_t *						m_pMutex;
+#else
 	pthread_mutex_t *			m_pMutex;
+#endif
 	CSphString					m_sError;
 #endif
 };
@@ -2050,7 +2057,11 @@ public:
 	{
 		if ( m_pMutex )
 		{
+#ifdef __FreeBSD__
+			m_pValue = reinterpret_cast<T*> ( m_pStorage.GetWritePtr () + sizeof ( sem_t ) );
+#else
 			m_pValue = reinterpret_cast<T*> ( m_pStorage.GetWritePtr () + sizeof ( pthread_mutex_t ) );
+#endif
 			*m_pValue = tInitValue;
 		}
 	}
