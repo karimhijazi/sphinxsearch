@@ -23491,12 +23491,18 @@ void CSphSource_XMLPipe2::EndElement ( const char * szName )
 			if ( m_iCurField!=-1 )
 			{
 				assert ( m_pCurDocument );
-				m_pCurDocument->m_dFields [m_iCurField].SetBinary ( (char*)m_pFieldBuffer, m_iFieldBufferLen );
+				if ( !m_pCurDocument->m_dFields [ m_iCurField ].IsEmpty () )
+					sphWarn ( "duplicate text node <%s> - using first value", m_tSchema.m_dFields [ m_iCurField ].m_sName.cstr() );
+				else
+					m_pCurDocument->m_dFields [ m_iCurField ].SetBinary ( (char*)m_pFieldBuffer, m_iFieldBufferLen );
 			}
 			if ( m_iCurAttr!=-1 )
 			{
 				assert ( m_pCurDocument );
-				m_pCurDocument->m_dAttrs [m_iCurAttr].SetBinary ( (char*)m_pFieldBuffer, m_iFieldBufferLen );
+				if ( !m_pCurDocument->m_dAttrs [ m_iCurAttr ].IsEmpty () )
+					sphWarn ( "duplicate attribute node <%s> - using first value", m_tSchema.GetAttr ( m_iCurAttr ).m_sName.cstr() );
+				else
+					m_pCurDocument->m_dAttrs [ m_iCurAttr ].SetBinary ( (char*)m_pFieldBuffer, m_iFieldBufferLen );
 			}
 
 			m_iFieldBufferLen = 0;
