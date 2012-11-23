@@ -11976,8 +11976,11 @@ bool CSphIndex_VLN::Merge ( CSphIndex * pSource, CSphVector<CSphFilterSettings> 
 			}
 		}
 
-		tMinMax.FinishCollect();
-		wrRows.PutBytes ( &dMinMaxBuffer[0], sizeof(DWORD) * tMinMax.GetActualSize() );
+		if ( iTotalDocuments )
+		{
+			tMinMax.FinishCollect();
+			wrRows.PutBytes ( &dMinMaxBuffer[0], sizeof(DWORD) * tMinMax.GetActualSize() );
+		}
 		wrRows.CloseFile();
 		if ( wrRows.IsError() )
 			return false;
