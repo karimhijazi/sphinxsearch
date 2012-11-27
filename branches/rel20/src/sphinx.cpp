@@ -2297,7 +2297,10 @@ void CSphLowercaser::AddRemaps ( const CSphVector<CSphRemapRange> & dRemaps, DWO
 			int & iCodepoint = m_pChunk [ j >> CHUNK_BITS ] [ j & CHUNK_MASK ];
 			bool bWordPart = ( iCodepoint & MASK_CODEPOINT ) && !( iCodepoint & FLAG_CODEPOINT_SYNONYM );
 			int iNew = iRemapped | uFlags | ( iCodepoint & MASK_FLAGS );
-			iCodepoint = bWordPart ? ( iNew | FLAG_CODEPOINT_DUAL ) : iNew;
+			if ( bWordPart && ( iNew & FLAG_CODEPOINT_SPECIAL ) )
+				iCodepoint = ( iNew | FLAG_CODEPOINT_DUAL );
+			else
+				iCodepoint = iNew;
 
 			// new code-point flag removes SYNONYM
 			if ( ( iCodepoint & FLAG_CODEPOINT_SYNONYM ) && uFlags==0 && iRemapped!=0 )
