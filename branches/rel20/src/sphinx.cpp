@@ -1070,7 +1070,7 @@ public:
 			{
 				m_uMatchHits = m_rdDoclist.UnzipInt();
 				const DWORD uFirst = m_rdDoclist.UnzipInt();
-				if ( m_uMatchHits==1 )
+				if ( m_uMatchHits==1 && m_bHasHitlist )
 				{
 					const DWORD uField = m_rdDoclist.UnzipInt(); // field and end marker
 					m_iHitlistPos = uFirst | ( uField << 23 ) | ( U64C(1)<<63 );
@@ -9657,21 +9657,43 @@ bool CSphIndex_VLN::LoadHitlessWords ()
 {
 	assert ( m_dHitlessWords.GetLength()==0 );
 
-	if ( m_tSettings.m_sHitlessFile.IsEmpty() )
+	if ( m_tSettings.m_sHitlessFiles.IsEmpty() )
 		return true;
 
-	CSphAutofile tFile ( m_tSettings.m_sHitlessFile.cstr(), SPH_O_READ, m_sLastError );
-	if ( tFile.GetFD()==-1 )
-		return false;
+	const char * szStart = m_tSettings.m_sHitlessFiles.cstr();
 
-	CSphVector<BYTE> dBuffer ( (int)tFile.GetSize() );
-	if ( !tFile.Read ( &dBuffer[0], dBuffer.GetLength(), m_sLastError ) )
-		return false;
+	while ( *szStart )
+	{
+		while ( *szStart && ( sphIsSpace ( *szStart ) || *szStart==',' ) )
+			++szStart;
 
-	// FIXME!!! dict=keywords + hitless_words=some
-	m_pTokenizer->SetBuffer ( &dBuffer[0], dBuffer.GetLength() );
-	while ( BYTE * sToken = m_pTokenizer->GetToken() )
-		m_dHitlessWords.Add ( m_pDict->GetWordID ( sToken ) );
+		if ( !*szStart )
+			break;
+
+		const char * szWordStart = szStart;
+
+		while ( *szStart && !sphIsSpace ( *szStart ) && *szStart!=',' )
+			++szStart;
+
+		if ( szStart - szWordStart > 0 )
+		{
+			CSphString sFilename;
+			sFilename.SetBinary ( szWordStart, szStart-szWordStart );
+
+			CSphAutofile tFile ( sFilename.cstr(), SPH_O_READ, m_sLastError );
+			if ( tFile.GetFD()==-1 )
+				return false;
+
+			CSphVector<BYTE> dBuffer ( (int)tFile.GetSize() );
+			if ( !tFile.Read ( &dBuffer[0], dBuffer.GetLength(), m_sLastError ) )
+				return false;
+
+			// FIXME!!! dict=keywords + hitless_words=some
+			m_pTokenizer->SetBuffer ( &dBuffer[0], dBuffer.GetLength() );
+			while ( BYTE * sToken = m_pTokenizer->GetToken() )
+				m_dHitlessWords.Add ( m_pDict->GetWordID ( sToken ) );
+		}
+	}
 
 	m_dHitlessWords.Uniq();
 	return true;
@@ -15237,6 +15259,9 @@ int CSphIndex_VLN::DebugCheck ( FILE * fp )
 	// open files
 	//////////////
 
+	if ( !LoadHitlessWords () )
+		LOC_FAIL(( fp, "unable to load hitless words: %s", m_sLastError.cstr() ));
+
 	CSphString sError;
 	CSphAutoreader rdDict, rdDocs, rdHits;
 
@@ -15366,6 +15391,9 @@ int CSphIndex_VLN::DebugCheck ( FILE * fp )
 			iNewDoclistOffset = iDoclistOffset + rdDict.UnzipOffset();
 			iDocs = rdDict.UnzipInt();
 			iHits = rdDict.UnzipInt();
+			bool bHitless = m_dHitlessWords.BinarySearch ( uNewWordid );
+			if ( bHitless )
+				iDocs &= 0x7fffffff;
 
 			if ( uNewWordid<=uWordid )
 				LOC_FAIL(( fp, "wordid decreased (pos="INT64_FMT", wordid="UINT64_FMT", previd="UINT64_FMT")",
@@ -15376,8 +15404,8 @@ int CSphIndex_VLN::DebugCheck ( FILE * fp )
 					(int64_t)iDictPos, (uint64_t)uNewWordid ));
 
 			if ( iDocs<=0 || iHits<=0 || iHits<iDocs )
-				LOC_FAIL(( fp, "invalid docs/hits (pos="INT64_FMT", wordid="UINT64_FMT", docs="INT64_FMT", hits="INT64_FMT")",
-					(int64_t)iDictPos, (uint64_t)uNewWordid, (int64_t)iDocs, (int64_t)iHits ));
+				LOC_FAIL(( fp, "invalid docs/hits (pos="INT64_FMT", wordid="UINT64_FMT", docs="INT64_FMT", hits="INT64_FMT", hitless=%s)",
+					(int64_t)iDictPos, (uint64_t)uNewWordid, (int64_t)iDocs, (int64_t)iHits, ( bHitless?"true":"false" ) ));
 		}
 
 		// update stats, add checkpoint
@@ -15459,6 +15487,7 @@ int CSphIndex_VLN::DebugCheck ( FILE * fp )
 	uWordid = 0;
 	iDoclistOffset = 0;
 	int iDictDocs, iDictHits;
+	bool bHitless;
 
 	int iWordsChecked = 0;
 	for ( ;rdDict.GetPos()<m_tWordlist.m_iCheckpointsPos; )
@@ -15507,8 +15536,11 @@ int CSphIndex_VLN::DebugCheck ( FILE * fp )
 		{
 			// finish reading the entire entry
 			uWordid = uWordid + iDeltaWord;
+			bHitless = m_dHitlessWords.BinarySearch ( uWordid );
 			iDoclistOffset = iDoclistOffset + rdDict.UnzipOffset();
 			iDictDocs = rdDict.UnzipInt();
+			if ( bHitless )
+				iDictDocs &= 0x7fffffff;
 			iDictHits = rdDict.UnzipInt();
 		}
 
@@ -15565,6 +15597,7 @@ int CSphIndex_VLN::DebugCheck ( FILE * fp )
 		// FIXME!!! dict=keywords + hitless_words=some
 		bool bHitless = ( m_tSettings.m_eHitless==SPH_HITLESS_ALL ||
 			( m_tSettings.m_eHitless==SPH_HITLESS_SOME && m_dHitlessWords.BinarySearch ( uWordid ) ) );
+		pQword->m_bHasHitlist = !bHitless;
 
 		for ( ;; )
 		{
@@ -15612,7 +15645,7 @@ int CSphIndex_VLN::DebugCheck ( FILE * fp )
 			dFieldMask.Unset();
 			Hitpos_t uLastHit = EMPTY_HIT;
 
-			for ( ;; )
+			while ( !bHitless )
 			{
 				Hitpos_t uHit = pQword->GetNextHit();
 				if ( uHit==EMPTY_HIT )
@@ -15656,8 +15689,8 @@ int CSphIndex_VLN::DebugCheck ( FILE * fp )
 
 		// do checks
 		if ( iDictDocs!=iDoclistDocs )
-			LOC_FAIL(( fp, "doc count mismatch (wordid="UINT64_FMT"(%s), dict=%d, doclist=%d)",
-				uint64_t(uWordid), sWord, iDictDocs, iDoclistDocs ));
+			LOC_FAIL(( fp, "doc count mismatch (wordid="UINT64_FMT"(%s), dict=%d, doclist=%d, hitless=%s)",
+				uint64_t(uWordid), sWord, iDictDocs, iDoclistDocs, ( bHitless?"true":false ) ));
 
 		if ( ( iDictHits!=iDoclistHits || iDictHits!=iHitlistHits ) && !bHitless )
 			LOC_FAIL(( fp, "hit count mismatch (wordid="UINT64_FMT"(%s), dict=%d, doclist=%d, hitlist=%d)",
