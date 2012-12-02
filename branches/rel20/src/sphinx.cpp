@@ -9788,6 +9788,12 @@ int CSphIndex_VLN::Build ( const CSphVector<CSphSource*> & dSources, int iMemory
 		return 0;
 	}
 
+	if ( m_tSchema.m_dFields.GetLength()==0 )
+	{
+		m_sLastError.SetSprintf ( "No fields in schema - will not index" );
+		return 0;
+	}
+
 	// check docinfo
 	if ( m_tSchema.GetAttrsCount()==0 && m_tSettings.m_eDocinfo!=SPH_DOCINFO_NONE )
 	{
