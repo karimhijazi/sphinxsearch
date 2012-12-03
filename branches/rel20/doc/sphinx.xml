@@ -822,7 +822,7 @@ be run three times:
 <orderedlist>
 <listitem><para>with <option>$start</option> replaced with 1 and <option>$end</option> replaced with 1000;</para></listitem>
 <listitem><para>with <option>$start</option> replaced with 1001 and <option>$end</option> replaced with 2000;</para></listitem>
-<listitem><para>with <option>$start</option> replaced with 2000 and <option>$end</option> replaced with 2345.</para></listitem>
+<listitem><para>with <option>$start</option> replaced with 2001 and <option>$end</option> replaced with 2345.</para></listitem>
 </orderedlist>
 Obviously, that's not much of a difference for 2000-row table,
 but when it comes to indexing 10-million-row MyISAM table,
