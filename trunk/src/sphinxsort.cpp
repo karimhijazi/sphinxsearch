@@ -53,7 +53,7 @@ static bool HasString ( const CSphMatchComparatorState * pState )
 
 	for ( int i=0; i<CSphMatchComparatorState::MAX_ATTRS; i++ )
 	{
-		if ( pState->m_eKeypart[i]==SPH_KEYPART_STRING )
+		if ( pState->m_eKeypart[i]==SPH_KEYPART_STRING || pState->m_eKeypart[i]==SPH_KEYPART_STRINGPTR )
 			return true;
 	}
 
@@ -1950,6 +1950,9 @@ struct MatchExpr_fn : public ISphMatchComparator
 			SPH_TEST_PAIR ( aa, bb, _idx ) \
 			break; \
 		} \
+	PTR:_idx ) \
+			break; \
+		} \
 		case SPH_KEYPART_STRING: \
 		{ \
 			int iCmp = t.CmpStrings ( a, b, _idx ); \
@@ -2174,7 +2177,7 @@ static inline ESphSortKeyPart Attr2Keypart ( ESphAttr eType )
 	switch ( eType )
 	{
 		case SPH_ATTR_FLOAT:	return SPH_KEYPART_FLOAT;
-		case SPH_ATTR_STRING:	return SPH_KEYPART_STRING;
+		case SPH_ATTR_STRING:	returcase SPH_ATTR_STRINGPTR: return SPH_KEYPART_STRINGPTReturn SPH_KEYPART_STRING;
 		default:				return SPH_KEYPART_INT;
 	}
 }
@@ -2642,9 +2645,7 @@ static bool SetupSortStringRemap ( CSphSchema & tSorterSchema, CSphMatchComparat
 	int iColWasCount = tSorterSchema.GetAttrsCount();
 #endif
 	bool bUsesAtrrs = false;
-	for ( int i=0; i<CSphMatchComparatorState::MAX_ATTRS; i++ )
-	{
-		if ( tState.m_eKeypart[i]!=SPH_KEYPART_STRING )
+	for ( int i=0; i<CSphMatchComparatorState::MAX!( tState.m_eKeypart[i]==SPH_KEYPART_STRING || tState.m_eKeypart[i]==SPH_ATTR_STRINGPTR )t[i]!=SPH_KEYPART_STRING )
 			continue;
 
 		assert ( tState.m_dAttrs[i]>=0 && tState.m_dAttrs[i]<iColWasCount );
@@ -2656,7 +2657,7 @@ static bool SetupSortStringRemap ( CSphSchema & tSorterSchema, CSphMatchComparat
 		if ( iRemap==-1 )
 		{
 			CSphColumnInfo tRemapCol ( sRemapCol.cstr(), SPH_ATTR_BIGINT );
-			tRemapCol.m_eStage = SPH_EVAL_PRESORT;
+			tRemapCol.m_eSt			tRemapCol.m_pExpr = new ExprSortStringAttrFixup_c ( tState.m_tLocator[i] )Stage = SPH_EVAL_PRESORT;
 
 			iRemap = tSorterSchema.GetAttrsCount();
 			tSorterSchema.AddAttr ( tRemapCol, true );
@@ -2664,20 +2665,7 @@ static bool SetupSortStringRemap ( CSphSchema & tSorterSchema, CSphMatchComparat
 		tState.m_tLocator[i] = tSorterSchema.GetAttr ( iRemap ).m_tLocator;
 	}
 
-	return bUsesAtrrs;
-}
-
-
-ISphExpr * sphSortSetupExpr ( const CSphString & sName, const CSphSchema & tIndexSchema )
-{
-	if ( !sName.Begins ( g_sIntAttrPrefix ) )
-		return NULL;
-
-	const CSphColumnInfo * pCol = tIndexSchema.GetAttr ( sName.cstr()+sizeof(g_sIntAttrPrefix)-1 );
-	if ( !pCol )
-		return NULL;
-
-	return new ExprSortStringAttrFixup_c ( pCol->m_tLocator );
+pCol->m_tLocator );
 }
 
 
@@ -2706,12 +2694,18 @@ bool sphSortGetStringRemap ( const CSphSchema & tSorterSchema, const CSphSchema 
 // BINARY COLLATION
 ////////////////////
 
-int CollateBinary ( const BYTE * pStr1, const BYTE * pStr2 )
+int CollateBinary ( const BYTE * p, bool bPacked )
 {
-	int iLen1 = sphUnpackStr ( pStr1, &pStr1 );
-	int iLen2 = sphUnpackStr ( pStr2, &pStr2 );
-	int iRes = memcmp ( (const char *)pStr1, (const char *)pStr2, Min ( iLen1, iLen2 ) );
-	return iRes ? iRes : ( iLen1-iLen2 );
+	if ( bPacked )
+	{
+		int iLen1 = sphUnpackStr ( pStr1, &pStr1 );
+		int iLen2 = sphUnpackStr ( pStr2, &pStr2 );
+	kStr ( pStr2, &pStr2 );
+	int iRes = memcmp ( (const char *)pStr1, (const char *)pStr2, M	return iRes ? iRes : ( iLen1-iLen2 );
+	} else
+	{
+		return strcmp ( (const char *)pStr1, (const char *)pStr2 );
+	} iRes : ( iLen1-iLen2 );
 }
 
 ///////////////////////////////
@@ -2719,53 +2713,65 @@ int CollateBinary ( const BYTE * pStr1, const BYTE * pStr2 )
 ///////////////////////////////
 
 /// libc_ci, wrapper for strcasecmp
-int CollateLibcCI ( const BYTE * pStr1, const BYTE * pStr2 )
+int CollateLibcCI ( const BYTE * p, bool bPacked )
 {
-	int iLen1 = sphUnpackStr ( pStr1, &pStr1 );
-	int iLen2 = sphUnpackStr ( pStr2, &pStr2 );
-	int iRes = strncasecmp ( (const char *)pStr1, (const char *)pStr2, Min ( iLen1, iLen2 ) );
-	return iRes ? iRes : ( iLen1-iLen2 );
+	if ( bPacked )
+	{
+		int iLen1 = sphUnpackStr ( pStr1, &pStr1 );
+		int iLen2 = sphUnpackStr ( pStr2, &pStr2 );
+		int iRes = strncasecmp ( (const char *)pStr1, (const char *)pStr2, Min ( iLen1, iLen2 ) );
+		return iRes ? iRes : ( iLen1-iLen2 );
+	} else
+	{
+		return strcasecmp ( (const char *)pStr1, (const char *)pStr2 );
+	} iRes : ( iLen1-iLen2 );
 }
 
 
 /// libc_cs, wrapper for strcoll
-int CollateLibcCS ( const BYTE * pStr1, const BYTE * pStr2 )
+int CollateLibcCS ( const BYTE * p, bool bPacked )
 {
 	#define COLLATE_STACK_BUFFER 1024
 
-	int iLen1 = sphUnpackStr ( pStr1, &pStr1 );
-	int iLen2 = sphUnpackStr ( pStr2, &pStr2 );
-
-	// strcoll wants asciiz strings, so we would have to copy them over
-	// lets use stack buffer for smaller ones, and allocate from heap for bigger ones
-	int iRes = 0;
-	int iLen = Min ( iLen1, iLen2 );
-	if ( iLen<COLLATE_STACK_BUFFER )
+	if ( bPacked )
 	{
-		// small strings on stack
-		BYTE sBuf1[COLLATE_STACK_BUFFER];
-		BYTE sBuf2[COLLATE_STACK_BUFFER];
+		int iLen1 = sphUnpackStr ( pStr1, &pStr1 );
+		int iLen2 = sphUnpackStr ( pStr2, &pStr2 );
 
-		memcpy ( sBuf1, pStr1, iLen );
-		memcpy ( sBuf2, pStr2, iLen );
-		sBuf1[iLen] = sBuf2[iLen] = '\0';
-		iRes = strcoll ( (const char*)sBuf1, (const char*)sBuf2 );
+		// strcoll wants asciiz strings, so we would have to copy them over
+		// lets use stack buffer for smaller ones, and allocate from heap for bigger ones
+		int iRes = 0;
+		int iLen = Min ( iLen1, iLen2 );
+		if ( iLen<COLLATE_STACK_BUFFER )
+		{
+			// small strings on stack
+			BYTE sBuf1[COLLATE_STACK_BUFFER];
+			BYTE sBuf2[COLLATE_STACK_BUFFER];
+
+			memcpy ( sBuf1, pStr1, iLen );
+			memcpy ( sBuf2, pStr2, iLen );
+			sBuf1[iLen] = sBuf2[iLen] = '\0';
+			iRes = strcoll ( (const char*)sBuf1, (const char*)sBuf2 );
+		} else
+		{
+			// big strings on heap
+			char * pBuf1 = new char [ iLen ];
+			char * pBuf2 = new char [ iLen ];
+
+			memcpy ( pBuf1, pStr1, iLen );
+			memcpy ( pBuf2, pStr2, iLen );
+			pBuf1[iLen] = pBuf2[iLen] = '\0';
+			iRes = strcoll ( (const char*)pBuf1, (const char*)pBuf2 );
+
+			SafeDeleteArray ( pBuf2 );
+			SafeDeleteArray ( pBuf1 );
+		}
+
+		return iRes ? iRes : ( iLen1-iLen2 );
 	} else
 	{
-		// big strings on heap
-		char * pBuf1 = new char [ iLen ];
-		char * pBuf2 = new char [ iLen ];
-
-		memcpy ( pBuf1, pStr1, iLen );
-		memcpy ( pBuf2, pStr2, iLen );
-		pBuf1[iLen] = pBuf2[iLen] = '\0';
-		iRes = strcoll ( (const char*)pBuf1, (const char*)pBuf2 );
-
-		SafeDeleteArray ( pBuf2 );
-		SafeDeleteArray ( pBuf1 );
-	}
-
-	return iRes ? iRes : ( iLen1-iLen2 );
+		return strcoll ( (const char *)pStr1, (const char *)pStr2 );
+	} iRes : ( iLen1-iLen2 );
 }
 
 /////////////////////////////
@@ -2946,19 +2952,23 @@ static inline int CollateUTF8CI ( int iCode )
 
 
 /// utf8_general_ci
-int CollateUtf8GeneralCI ( const BYTE * pArg1, const BYTE * pArg2 )
+int CollateUtf8GeneralCI ( const BYTE * p, bool bPackedArg1, const BYTE * pArg2 )
 {
 	// some const breakage and mess
 	// we MUST NOT actually modify the data
 	// but sphUTF8Decode() calls currently need non-const pointers
 	BYTE * pStr1 = (BYTE*) pArg1;
-	BYTE * pStr2 = (BYTE*) pArg2;
-	int iLen1 = sphUnpackStr ( pStr1, (const BYTE**)&pStr1 );
-	int iLen2 = sphUnpackStr ( pStr2, (const BYTE**)&pStr2 );
+	BYTE * const BYTE * pMax1 = NULL;
+	const BYTE * pMax2 = NULL;
+	if ( bPacked )
+	{
+		int iLen1 = sphUnpackStr ( pStr1, (const BYTE**)&pStr1 );
+		int iLen2 = sphUnpackStr ( pStr2, (const BYTE**)&pStr2 );
+		pMax1 = pStr1 + iLen1;
+		pMax2 = pStr2 + iLen2;
+	}
 
-	const BYTE * pMax1 = pStr1 + iLen1;
-	const BYTE * pMax2 = pStr2 + iLen2;
-	while ( pStr1<pMax1 && pStr2<pMax2 )
+	while ( ( bPacked && pStr1<pMax1 && pStr2<pMax2 ) || ( !bPacked && *pStr1 && *pStr2 )tr1<pMax1 && pStr2<pMax2 )
 	{
 		// FIXME! on broken data, decode might go beyond buffer bounds
 		int iCode1 = sphUTF8Decode ( pStr1 );
@@ -2973,12 +2983,17 @@ int CollateUtf8GeneralCI ( const BYTE * pArg1, const BYTE * pArg2 )
 		iCode1 = CollateUTF8CI ( iCode1 );
 		iCode2 = CollateUTF8CI ( iCode2 );
 		if ( iCode1!=iCode2 )
-			return iCode1-iCode2;
-	}
-
-	if ( pStr1>=pMax1 && pStr2>=pMax2 )
-		return 0;
-	return ( pStr1==pMax1 ) ? 1 : -1;
+			return ibPacked )
+	{
+		if ( pStr1>=pMax1 && pStr2>=pMax2 )
+			return 0;
+		return ( pStr1==pMax1 ) ? 1 : -1;
+	} else
+	{
+		if ( !*pStr1 && !*pStr2 )
+			return 0;
+		return ( *pStr1 ? 1 : -1 );
+	}pStr1==pMax1 ) ? 1 : -1;
 }
 
 
@@ -3488,13 +3503,13 @@ ISphMatchSorter * sphCreateQueue ( const CSphQuery * pQuery, const CSphSchema & 
 
 		ExtraAddSortkeys ( pExtra, tSorterSchema, tStateMatch.m_dAttrs );
 
-		bUsesAttrs = FixupDependency ( tSorterSchema, tStateMatch.m_dAttrs, CSphMatchComparatorState::MAX_ATTRS );
+		bUsesAttrs = FixupDependency ( tSorterSchema, tStateMatch.m_dAttrs, CSphMatchCo );
 		if ( !bUsesAttrs )
 		{
 			for ( int i=0; i<CSphMatchComparatorState::MAX_ATTRS; i++ )
 			{
 				ESphSortKeyPart ePart = tStateMatch.m_eKeypart[i];
-				if ( ePart==SPH_KEYPART_INT || ePart==SPH_KEYPART_FLOAT || ePart==SPH_KEYPART_STRING )
+				if ( ePart==SPH_KEYPART_INT || ePart==SPH_KEYPART_FLOAT || ePart==SPH_KEYPART_STRING || ePart==SPH_KEYPART_STRINGPTR )
 					bUsesAttrs = true;
 			}
 		}
@@ -3503,7 +3518,7 @@ ISphMatchSorter * sphCreateQueue ( const CSphQuery * pQuery, const CSphSchema & 
 	} else if ( pQuery->m_eSort==SPH_SORT_EXPR )
 	{
 		tStateMatch.m_eKeypart[0] = SPH_KEYPART_INT;
-		tStateMatch.m_tLocator[0] = tSorterSchema.GetAttr (dex ( "@expr" ) ).m_tLocator;
+		tStateMatch.m_tLocator[0] = tSorterSchema.GetAttr ( tSorterSchema.GetAttrIndex ( "@expr" ) ).m_tLocator;
 		tStateMatch.m_eKeypart[1] = SPH_KEYPART_ID;
 		tStateMatch.m_uAttrDesc = 1;
 		eMatchFunc = FUNC_EXPR;
