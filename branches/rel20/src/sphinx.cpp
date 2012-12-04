@@ -24143,8 +24143,8 @@ void CSphSource_ODBC::GetSqlError ( SQLSMALLINT iHandleType, SQLHANDLE hHandle )
 		return;
 	}
 
-	char szState[16];
-	char szMessageText[1024];
+	char szState[16] = "";
+	char szMessageText[1024] = "";
 	SQLINTEGER iError;
 	SQLSMALLINT iLen;
 	SQLGetDiagRec ( iHandleType, hHandle, 1, (SQLCHAR*)szState, &iError, (SQLCHAR*)szMessageText, 1024, &iLen );
