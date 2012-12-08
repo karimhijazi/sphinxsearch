@@ -550,7 +550,17 @@ int CSphAutofile::Open ( const CSphString & sName, int iMode, CSphString & sErro
 	assert ( m_iFD==-1 && m_sFilename.IsEmpty () );
 	assert ( !sName.IsEmpty() );
 
+#if USE_WINDOWS
+	if ( iMode==SPH_O_READ )
+	{
+		intptr_t tFD = (intptr_t)CreateFile ( sName.cstr(), GENERIC_READ , FILE_SHARE_DELETE | FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL );
+		m_iFD = _open_osfhandle ( tFD, 0 );
+	}
+	else
+		m_iFD = ::open ( sName.cstr(), iMode, 0644 );
+#else
 	m_iFD = ::open ( sName.cstr(), iMode, 0644 );
+#endif
 	m_sFilename = sName; // not exactly sure why is this uncoditional. for error reporting later, i suppose
 
 	if ( m_iFD<0 )
