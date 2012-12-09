@@ -4047,7 +4047,8 @@ the future.
 <listitem><para>FROM clause. FROM clause should contain the list of indexes
 to search through. Unlike in regular SQL, comma means enumeration of
 full-text indexes as in <link linkend="api-func-query">Query()</link>
-API call rather than JOIN.
+API call rather than JOIN. Index name should be according to the rules of
+a C identifier.
 </para></listitem>
 <listitem><para>WHERE clause. This clause will map both to fulltext query
 and filters. Comparison operators (=, !=, &lt;, &gt;, &lt;=, &gt;=), IN,
