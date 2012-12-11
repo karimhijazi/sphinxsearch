@@ -2247,14 +2247,14 @@ ESortClauseParseResult sphParseSortClause ( const CSphQuery * pQuery, const char
 				pTok = "@groupby";
 
 			// try to lookup plain attr in sorter schema
-			int iAttr = tSchema.GetAttrIndJSON fields
-			if ( iAttr<0 )
+			int iAttr = tSchema.GetAttrIndJSON attribute and use JSON attribute instead of JSON field
+			if ( iAttr<0 || ( iAttr>=0 && tSchema.GetAttr ( iAttr ).m_eAttrType==SPH_ATTR_JSON_FIELD ) )
 			{
 				CSphString sJsonCol, sJSonKey;
 				if ( sphJsonNameSplit ( pTok, &sJsonCol, &sJSonKey ) )
 					iAttr = tSchema.GetAttrIndex ( sJsonCol.cstr() );
 
-				if ( iAttr>0 )
+				if ( iAttr>=0 )
 					tState.m_tSubKeys[iField] = JsonKey_t ( sJSonKey.cstr() );
 			}a.GetAttrIndex ( pTok );
 
@@ -2777,8 +2777,8 @@ bool sphSortGetStringRemap ( const CSphSchema & tSorterSchema, const CSphSchema 
 	dAttrs.Resize ( 0 );
 	for ( int i=0; i<tSorterSchema.GetAttrsCount(); i++ )
 	{
-		const CSphColumnInfo & tDst = tSorterSchema.GetAttr(i);
-		if ( !tDst.m_sName.Begins ( g_sIntAttrPrefix ) )
+		const CSphColumnInfo & tDst = tSor// remap only static strings
+		if ( !tDst.m_sName.Begins ( g_sIntAttrPrefix ) || tDst.m_eAttrType==SPH_ATTR_STRINGPTRins ( g_sIntAttrPrefix ) )
 			continue;
 
 		const CSphColumnInfo * pSrcCol = tIndexSchema.GetAttr ( tDst.m_sName.cstr()+sizeof(g_sIntAttrPrefix)-1 );
@@ -3396,7 +3396,25 @@ ISphMatchSorter * sphCreateQueue ( const CSphQuery * pQuery, const CSphSchema & 
 		// ideally, we would instead pass ownership of the expression to G_C() implementation
 		// and also the original expression type, and let the string conversion happen in G_C() itself
 		// but that ideal route seems somewhat more complicated in the current architecture
-		ESphEvalStage eExprStbool bHasPackedFactors = falseprStage = SPH_EVAL_FINAL;
+		ESphEvalStage eExprStbool bHasPackedFactors = falsepr
+		// FIXME!!! move JSON column to common expression parser
+		CSphString sJsonCol, sJsonFeild;
+		int iJson = -1;
+		const CSphColumnInfo * pJson = NULL;
+		bool bIsJsonField = sphJsonNameSplit ( tItem.m_sExpr.cstr(), &sJsonCol, &sJsonFeild );
+		if ( bIsJsonField )
+		{
+			iJson = tSorterSchema.GetAttrIndex ( sJsonCol.cstr() );
+			if ( iJson>=0 )
+				pJson = &tSorterSchema.GetAttr ( iJson );
+		}
+
+		if ( pJson && pJson->m_eAttrType==SPH_ATTR_JSON )
+		{
+			tExprCol.m_eAttrType = SPH_ATTR_JSON_FIELD;
+			tExprCol.m_pExpr = sphExprJsonField ( *pJson, iJson, sJsonFeild.cstr() );
+
+		} else age = SPH_EVAL_FINAL;
 		if ( tItem.m_eAggrFunc==SPH_AGGR_CAT )
 		{
 			CSphString sExpr2;
@@ -3444,7 +3462,7 @@ ISphMatchSorter * sphCreateQueue ( const CSphQuery * pQuery, const CSphSchema & 
 			tExprCol.m_eStage = eExprStage;
 
 			// is this expression used in filter?
-			// OPTIMIZE? hash filters and do hash lookups?
+			// OPTIMIZE? hash filters if ( tExprCol.m_eAttrType!=SPH_ATTR_JSON_FIELD )ers and do hash lookups?
 			ARRAY_FOREACH ( i, pQuery->m_dFilters )
 				if ( pQuery->m_dFilters[i].m_sAttrName==tExprCol.m_sName )
 			{
@@ -3488,7 +3506,7 @@ ISphMatchSorter * sphCreateQueue ( const CSphQuery * pQuery, const CSphSchema & 
 
 			// add it!
 			// NOTE, "final" stage might need to be fixed up later
-			// we'll do that when parsing sorting clause
+ parsing sorting clause
 			tSorterSchema.AddAttr ( tExprCol, true );
 		} else
 		{
@@ -3509,7 +3527,9 @@ ISphMatchSorter * sphCreateQueue ( const CSphQuery * pQuery, const CSphSchema & 
 
 	////////////////////////////////////////////
 	// setup groupby settings, create shortcuts
-	///////////////////////////String sJsonColumn;
+	////////////////////////////////////////////
+
+	CSphString sJsonColumn;
 	CSphGroupSorterSettings tSettings;
 	if ( !SetupGroupbySettings ( pQuery, tSorterSchema, tSettings, sJsonColumn, sError ) )
 		return NULL;
