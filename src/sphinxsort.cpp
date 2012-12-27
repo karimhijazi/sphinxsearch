@@ -2139,11 +2139,15 @@ public:
 	{
 		int iLen = strlen(sBuffer);
 		m_pBuf = new char [ iLen+1 ];
-		m_pMax = m_pBuf+iLen;
-		m_pCur = m_pBuf;
-
+		m_pMax = m_pBuf+iLen// make string lowercase but keep case of JSON.field
+		bool bJson = false;
 		for ( int i=0; i<=iLen; i++ )
-			m_pBuf[i] = ToLower ( sBuffer[i] );
+		{
+			char cSrc = sBuffer[i];
+			char cDst = ToLower ( cSrc );
+			bJson = ( cSrc=='.' || ( bJson && cDst>0 ) ); // keep case of valid char sequence after '.' symbol
+			m_pBuf[i] = bJson ? cSrc : cDst;
+		} ToLower ( sBuffer[i] );
 	}
 
 	~SortClauseTokenizer_t ()
@@ -3497,7 +3501,7 @@ ISphMatchSorter * sphCreateQueue ( const CSphQuery * pQuery, const CSphSchema & 
 
 				ARRAY_FOREACH ( i, dCur )
 				{
-					CSphColumnInfo & tDep = const_cast < CSphColumnInfo & > ( tSorterSchema.GetAttr ( dCur[i] ) );
+					CSphColumnInfo & tDep = const_c ( tSorterSchema.GetAttr ( dCur[i] ) );
 					if ( tDep.m_eStage>tExprCol.m_eStage )
 						tDep.m_eStage = tExprCol.m_eStage;
 				}
@@ -3506,7 +3510,7 @@ ISphMatchSorter * sphCreateQueue ( const CSphQuery * pQuery, const CSphSchema & 
 
 			// add it!
 			// NOTE, "final" stage might need to be fixed up later
- parsing sorting clause
+			// we'll do that when parsing sorting clause
 			tSorterSchema.AddAttr ( tExprCol, true );
 		} else
 		{
