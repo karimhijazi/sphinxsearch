@@ -1736,7 +1736,9 @@ int main ( int argc, char ** argv )
 			sphDie ( "failed to open %s: %s", sDumpRows.cstr(), strerror(errno) );
 	}
 
-	sphStartIOStats ();
+	sphInitIOStats ();
+	CSphIOStats tIO;
+	tIO.Start();
 
 	bool bIndexedOk = false; // if any of the indexes are ok
 	if ( bMerge )
@@ -1783,13 +1785,14 @@ int main ( int argc, char ** argv )
 
 	sphShutdownWordforms ();
 
-	const CSphIOStats & tStats = sphStopIOStats ();
-
 	if ( !g_bQuiet )
 	{
-		ReportIOStats ( "reads", tStats.m_iReadOps, tStats.m_iReadTime, tStats.m_iReadBytes );
-		ReportIOStats ( "writes", tStats.m_iWriteOps, tStats.m_iWriteTime, tStats.m_iWriteBytes );
+		ReportIOStats ( "reads", tIO.m_iReadOps, tIO.m_iReadTime, tIO.m_iReadBytes );
+		ReportIOStats ( "writes", tIO.m_iWriteOps, tIO.m_iWriteTime, tIO.m_iWriteBytes );
 	}
+
+	tIO.Stop();
+	sphDoneIOStats();
 
 	////////////////////////////
 	// rotating searchd indices

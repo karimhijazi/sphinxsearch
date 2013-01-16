@@ -1387,6 +1387,7 @@ void Shutdown ()
 		// clear shut down of rt indexes + binlog
 		g_tDistLock.Done();
 		SafeDelete ( g_pIndexes );
+		sphDoneIOStats();
 		sphRTDone();
 
 		sphShutdownWordforms ();
@@ -4557,7 +4558,7 @@ void LogQueryPlain ( const CSphQuery & tQuery, const CSphQueryResult & tRes )
 	// optional performance counters
 	if ( g_bIOStats || g_bCpuStats )
 	{
-		const CSphIOStats & IOStats = sphStopIOStats ();
+		const CSphIOStats & IOStats = tRes.m_tIOStats;
 
 		if ( p<pMax )
 			*p++ = ' ';
@@ -4973,7 +4974,7 @@ void LogQuerySphinxql ( const CSphQuery & q, const CSphQueryResult & tRes, const
 		// performance counters
 		if ( g_bIOStats || g_bCpuStats )
 		{
-			const CSphIOStats & IOStats = sphStopIOStats ();
+			const CSphIOStats & IOStats = tRes.m_tIOStats;
 
 			if ( g_bIOStats )
 				tBuf.Append ( " ios=%d kb=%d.%d ioms=%d.%d",
@@ -6316,8 +6317,6 @@ void SearchHandler_c::RunUpdates ( const CSphQuery & tQuery, const CSphString & 
 		return;
 
 	int64_t tmLocal = -sphMicroTimer();
-	if ( g_bIOStats )
-		sphStartIOStats ();
 
 	RunLocalSearches ( NULL, NULL );
 	tmLocal += sphMicroTimer();
@@ -6345,10 +6344,10 @@ void SearchHandler_c::RunUpdates ( const CSphQuery & tQuery, const CSphString & 
 		tRes.m_sWarning = sFailures.cstr(); // FIXME!!! commint warnings too
 	}
 
-	const CSphIOStats & tIO = sphStopIOStats ();
-
 	if ( g_pStats )
 	{
+		const CSphIOStats & tIO = tRes.m_tIOStats;
+
 		g_tStatsMutex.Lock();
 		g_pStats->m_iQueries += 1;
 		g_pStats->m_iQueryTime += tmLocal;
@@ -6654,6 +6653,7 @@ void SearchHandler_c::RunLocalSearchesMT ()
 
 			tRes.m_iMultiplier = m_bMultiQueue ? iQueries : 1;
 			tRes.m_iCpuTime += tRaw.m_iCpuTime / tRes.m_iMultiplier;
+			tRes.m_tIOStats.Add ( tRaw.m_tIOStats );
 
 			// extract matches from sorter
 			FlattenToRes ( pSorter, tRes );
@@ -6731,6 +6731,7 @@ bool SearchHandler_c::RunLocalSearch ( int iLocal, ISphMatchSorter ** ppSorters,
 	// do the query
 	bool bResult = false;
 	pServed->m_pIndex->SetCacheSize ( g_iMaxCachedDocs, g_iMaxCachedHits );
+	ppResults[0]->m_tIOStats.Start();
 	if ( *pMulti )
 	{
 		bResult = pServed->m_pIndex->MultiQuery ( &m_dQueries[m_iStart], ppResults[0], iQueries, ppSorters, &dKlists );
@@ -6738,6 +6739,7 @@ bool SearchHandler_c::RunLocalSearch ( int iLocal, ISphMatchSorter ** ppSorters,
 	{
 		bResult = pServed->m_pIndex->MultiQueryEx ( iQueries, &m_dQueries[m_iStart], ppResults, ppSorters, &dKlists );
 	}
+	ppResults[0]->m_tIOStats.Stop();
 
 	ARRAY_FOREACH ( i, dLocked )
 		ReleaseIndex ( dLocked[i] );
@@ -6848,16 +6850,22 @@ void SearchHandler_c::RunLocalSearches ( ISphMatchSorter * pLocalSorter, const c
 		pServed->m_pIndex->SetCacheSize ( g_iMaxCachedDocs, g_iMaxCachedHits );
 		if ( m_bMultiQueue )
 		{
+			tStats.m_tIOStats.Start();
 			bResult = pServed->m_pIndex->MultiQuery ( &m_dQueries[m_iStart], &tStats,
 				dSorters.GetLength(), dSorters.Begin(), NULL );
+			tStats.m_tIOStats.Stop();
 		} else
 		{
 			CSphVector<CSphQueryResult*> dResults ( m_dResults.GetLength() );
 			ARRAY_FOREACH ( i, m_dResults )
 				dResults[i] = &m_dResults[i];
 
+			dResults[m_iStart]->m_tIOStats.Start();
+
 			bResult = pServed->m_pIndex->MultiQueryEx ( dSorters.GetLength(),
 				&m_dQueries[m_iStart], &dResults[m_iStart], &dSorters[0], NULL );
+
+			dResults[m_iStart]->m_tIOStats.Stop();
 		}
 
 		// handle results
@@ -6885,6 +6893,7 @@ void SearchHandler_c::RunLocalSearches ( ISphMatchSorter * pLocalSorter, const c
 					// these times will be overridden below, but let's be clean
 					tRes.m_iQueryTime += tStats.m_iQueryTime / ( m_iEnd-m_iStart+1 );
 					tRes.m_iCpuTime += tStats.m_iCpuTime / ( m_iEnd-m_iStart+1 );
+					tRes.m_tIOStats.Add ( tStats.m_tIOStats );
 					tRes.m_pMva = tStats.m_pMva;
 					tRes.m_pStrings = tStats.m_pStrings;
 					MergeWordStats ( tRes, tStats.m_hWordStats, &m_dFailuresSet[iQuery], sLocal );
@@ -6963,9 +6972,6 @@ void SearchHandler_c::RunSubset ( int iStart, int iEnd )
 	int64_t tmLocal = 0;
 	int64_t tmWait = 0;
 	int64_t tmCpu = sphCpuTimer ();
-
-	if ( g_bIOStats )
-		sphStartIOStats ();
 
 	// prepare for descent
 	CSphQuery & tFirst = m_dQueries[iStart];
@@ -7321,6 +7327,8 @@ void SearchHandler_c::RunSubset ( int iStart, int iEnd )
 	// merge all results
 	/////////////////////
 
+	CSphIOStats tIO;
+
 	for ( int iRes=iStart; iRes<=iEnd; iRes++ )
 	{
 		AggrResult_t & tRes = m_dResults[iRes];
@@ -7330,6 +7338,7 @@ void SearchHandler_c::RunSubset ( int iStart, int iEnd )
 		// minimize sorters needs these pointers
 		tRes.m_dTag2Pools[0].m_pMva = m_dMvaStorage.Begin();
 		tRes.m_dTag2Pools[0].m_pStrings = m_dStringsStorage.Begin();
+		tIO.Add ( tRes.m_tIOStats );
 
 		// if there were no successful searches at all, this is an error
 		if ( !tRes.m_iSuccesses )
@@ -7414,8 +7423,6 @@ void SearchHandler_c::RunSubset ( int iStart, int iEnd )
 			m_dResults[iRes].m_iCpuTime += tmDeltaCpu;
 		}
 	}
-
-	const CSphIOStats & tIO = sphStopIOStats ();
 
 	if ( g_pStats )
 	{
@@ -16177,6 +16184,9 @@ int WINAPI ServiceMain ( int argc, char **argv )
 	// create flush-rt thread
 	if ( g_eWorkers==MPM_THREADS && !sphThreadCreate ( &g_tRtFlushThread, RtFlushThreadFunc, 0 ) )
 		sphDie ( "failed to create rt-flush thread" );
+
+	if ( g_bIOStats && !sphInitIOStats () )
+		sphWarning ( "unable to init IO statistics" );
 
 	// almost ready, time to start listening
 	int iBacklog = hSearchd.GetInt ( "listen_backlog", SEARCHD_BACKLOG );
