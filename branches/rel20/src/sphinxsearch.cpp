@@ -3024,7 +3024,7 @@ inline bool FSMmultinear::HitFSM ( const ExtHit_t* pHit, ExtHit_t* dTarget )
 
 //////////////////////////////////////////////////////////////////////////
 
-ExtQuorum_c::ExtQuorum_c ( CSphVector<ExtNode_i*> & dQwords, DWORD uDupeMask, const XQNode_t & tNode, const ISphQwordSetup & )
+ExtQuorum_c::ExtQuorum_c ( CSphVector<ExtNode_i*> & dQwords, DWORD uDupeMask, const XQNode_t & tNode, const ISphQwordSetup & tSetup )
 {
 	assert ( tNode.GetOp()==SPH_QUERY_QUORUM );
 
@@ -3051,6 +3051,8 @@ ExtQuorum_c::ExtQuorum_c ( CSphVector<ExtNode_i*> & dQwords, DWORD uDupeMask, co
 	m_uMask = m_uInitialMask = uDupeMask;
 	m_uMaskEnd = dQwords.GetLength() - 1;
 	m_uMatchedDocid = 0;
+
+	AllocDocinfo ( tSetup );
 }
 
 ExtQuorum_c::~ExtQuorum_c ()
