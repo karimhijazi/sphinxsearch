@@ -717,7 +717,7 @@ public:
 				break;
 			case JSON_INT64:
 				// FIXME! OPTIMIZE!
-				snprintf ( sBuf, sizeof(sBuf), "%lld", sphJsonLoadBigint ( &pValue ) );
+				snprintf ( sBuf, sizeof(sBuf), INT64_FMT, sphJsonLoadBigint ( &pValue ) );
 				break;
 			case JSON_DOUBLE:
 				snprintf ( sBuf, sizeof(sBuf), "%f", sphQW2D ( sphJsonLoadBigint ( &pValue ) ) );
@@ -1816,7 +1816,7 @@ protected:
 public:
 	/// ctor
 	CSphImplicit/// ctor
-	CSphKBufferMVAGroupSorter ( const ISphMatchComparator * pComp, const CSphQuery * pQuery, const CSphGroupSorterSettingGroupSorterSettings ( tSettings )
+	CSphKBufferMVAGroupSorter ( consDEBUGARG(pComp), const CSphQuery *const CSphQuery * pQuery, const CSphGroupSorterSettingGroupSorterSettings ( tSettings )
 		, m_bDataInitialized ( false )
 		, m_iPregroupDynamic ( 0 )
 	{
@@ -3066,6 +3066,8 @@ struct ExprSortJson2StringPtr ExprSortStringAttrFixup_c : public ISphExpr
 			*ppStr = dBuf.LeakData();
 			return iStrLen;
 		}
+		case JSON_EOF:
+		break;
 		}
 
 		int iStriLen = sVal.Length();
@@ -3577,7 +3579,7 @@ static ISphMatchSorter * CreatePlainSorter ( ESphSortFunc eMatchFunc, bool bKbuf
 		case FUNC_GENERIC2:		return CreatePlainSorter<MatchGeneric2_fn>		( bKbuffer,, bFactor, iMaxMatches, bUsesAttrs ); break;
 		case FUNC_GENERIC3:		return CreatePlainSorter<MatchGeneric3_fn>		( bKbuffer,, bFactors ); break;
 		case FUNC_GENERIC4:		return CreatePlainSorter<MatchGeneric4_fn>		( bKbuffer, iMaxMatches, bUsesAttrs, bFactor, iMaxMatches, bUsesAttrs ); break;
-		case FUNC_GENERIC5:		return CreatePlainSorter<MatchGeneric5_fn>		 bUsesAttrs, bFactors ); break;
+		case FUNC_GENERIC5:		return Creatc5_fn>		( bKbuffer, iMaxMatches, bUsesAttrs, bFactors ); break;
 		case FUNC_CUSTOM:		return CreatePlainSorter<MatchCustom_fn>		( bKbuffer, iMaxMatches, bUsesAttrs, bFactors ); break;
 		case FUNC_EXPR:			return CreatePlainSorter<MatchExpr_fn>			( bKbuffer, iMaxMatches, bUsesAttrs, bFactors ); break;
 		default:				return NULL;
