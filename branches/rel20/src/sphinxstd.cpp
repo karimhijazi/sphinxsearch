@@ -787,10 +787,25 @@ CSphProcessSharedMutex::CSphProcessSharedMutex ( int iExtraSize )
 	}
 #endif // __FreeBSD__
 }
+
+CSphProcessSharedMutex::~CSphProcessSharedMutex()
+{
+        if ( m_pMutex )
+        {
+#ifdef __FreeBSD__
+                sem_destroy ( m_pMutex );
+#else
+                pthread_mutex_destroy ( m_pMutex );
+#endif
+                m_pMutex = NULL;
+        }
+}
 #else
 CSphProcessSharedMutex::CSphProcessSharedMutex ( int )
 {}
-#endif
+CSphProcessSharedMutex::~CSphProcessSharedMutex()
+{}
+#endif // !USE_WINDOWS
 
 
 void CSphProcessSharedMutex::Lock () const
