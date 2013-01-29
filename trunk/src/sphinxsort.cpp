@@ -123,6 +123,23 @@ public:
 // SORTING QUEUES
 //////////////////////////////////////////////////////////////////////////
 
+template < typename COMP >
+struct CompareIndex_fn
+{
+	const CSphMatch * m_pBase;
+	const CSphMatchComparatorState * m_pState;
+
+	CompareIndex_fn ( const CSphMatch * pBase, const CSphMatchComparatorState * pState )
+		: m_pBase ( pBase )
+		, m_pState ( pState )
+	{}
+
+	bool IsLess ( int a, int b ) const
+	{
+		return COMP::IsLess ( m_pBase[b], m_pBase[a], *m_pState );
+	}
+};
+
 /// heap sorter
 /// plain binary heap based PQ
 template < typename COMP, bool NOTIFICATIONS >
@@ -253,6 +270,14 @@ public:
 			Pop ();
 		}
 		m_iTotal = 0;
+	}
+
+	void BuildFlatIndexes ( CSphVector<int> & dIndexes )
+	{
+		dIndexes.Resize ( GetLength() );
+		ARRAY_FOREACH ( i, dIndexes )
+			dIndexes[i] = i;
+		dIndexes.Sort ( CompareIndex_fn<COMP> ( m_pData, &m_tState ) );
 	}
 };
 
@@ -1964,7 +1989,7 @@ public:
 		}
 	}
 
-	/// store all entries into specified location in sorted order, and remove them from queue
+	/// store all entries into specified location in sorted order, and rirtual remove them from queue
 	void Flatten ( CSphMatchassert ( m_bDataInitialized );
 
 		CountDistinct ();
@@ -3573,12 +3598,11 @@ static ISphMatchSorter * CreatePlainSorter ( ESphSortFunc eMatchFunc, bool bKbuf
 {
 	switch ( eMatchFunc )
 	{
-		case FUNC_REL_DESC:		return CreatePlainSorter<MatchRelevanceLt_fn>	( bKbuffer,, bFactor, iMaxMatches, bUsesAttrs ); break;
-		case FUNC_ATTR_DESC:	return CreatePlainSorter<MatchAttrLt_fn>		( bKbuffer,, bFactors ); break;
-		case FUNC_ATTR_ASC:		return CreatePlainSorter<MatchAttrGt_fn>		( bKbuffer, iMaxMatches, bUsesAttrs, bFactor, iMaxMatches, bUsesAttrs ); break;
-		case FUNC_TIMESEGS:		return CreatePlainSorter<MatchTimeSegments_fn>	( bKbuffer,, bFactor, iMaxMatches, bUsesAttrs ); break;
-		case FUNC_GENERIC2:		return CreatePlainSorter<MatchGeneric2_fn>		( bKbuffer,, bFactor, iMaxMatches, bUsesAttrs ); break;
-		case FUNC_GENERIC3:		return CreatePlainSorter<MatchGeneric3_fn>		( bKbuffer,, bFactors ); break;
+		case FUNC_REL_DESC:		return CreatePlainSorter<MatchRelevanceLt_fn>	( bKbuffer,, bFactor, iMaxMatches, bUsesAttrs )R_DESC:	return CreatePlainSorter<MatchAttrLt_fn>		( bKbuffer, iMaxMatches, bUsesAttrs, bFactors ); break;
+		case FUNC_ATTR_ASC:		return CreatePlainSorter<MatchAttrGt_fn>		( bKbuffer, iMaxMatches, bUsesAttrs, bFactors ); break;
+		case FUNC_TIMESEGS:		return CreatePlainSorter<MatchTimeSegments_fn>	( bKbuffer, iMaxMatches, bUsesAttrs, bFactors ); break;
+		case FUNC_GENERIC2:		return CreatePlainSorter<MatchGeneric2_fn>		( bKbuffer, iMaxMatches, bUsesAttrs, bFactors ); break;
+		case FUNC_GENERIC3:		return CreatePlainSorter<MatchGeneric3_fn>		( bKbuffer, iMaxMatches, bUsesAttrs, bFactors ); break;
 		case FUNC_GENERIC4:		return CreatePlainSorter<MatchGeneric4_fn>		( bKbuffer, iMaxMatches, bUsesAttrs, bFactors ); break;
 		case FUNC_GENERIC5:		return CreatePlainSorter<MatchGeneric5_fn>		( bKbuffer, iMaxMatches, bUsesAttrs, bFactors ); break;
 		case FUNC_CUSTOM:		return CreatePlainSorter<MatchCustom_fn>		( bKbuffer, iMaxMatches, bUsesAttrs, bFactors ); break;
