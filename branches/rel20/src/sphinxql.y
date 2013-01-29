@@ -211,11 +211,12 @@ where_clause:
 
 where_expr:
 	where_item
-	| where_expr TOK_AND where_item 
+	| where_expr TOK_AND where_expr
+	| '(' where_expr ')'
 	;
 
 expr_float_unhandled:	
-	| expr_ident '=' const_float
+	expr_ident '=' const_float
 	| expr_ident TOK_NE const_float
 	| expr_ident '>' const_float
 	| expr_ident '<' const_float
