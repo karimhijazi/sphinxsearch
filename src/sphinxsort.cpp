@@ -2747,9 +2747,7 @@ struct ExprGeodist_t : public ISphExpr
 public:
 						ExprGeodist_t () {}
 	bool				Setup ( const CSphQuery * pQuery, const CSphSchema & tSchema, CSphString & sError );
-	virtual float		Eval ( const CSphMatch & tMatch ) const;
-	virtual void		SetMVAPool ( const DWORD * ) {}
-	virtual void		GetDependencyColumns ( CSphVector<int> & dColumns ) const;
+	virtual float		Eval ( const CSphMatch & tMatch Command ( ESphExprCommand eCmd, void * pArgphVector<int> & dColumns ) const;
 
 protected:
 	CSphAttrLocator		m_tGeoLatLoc;
@@ -2808,18 +2806,20 @@ float ExprGeodist_t::Eval ( const CSphMatch & tMatch ) const
 	double dlon = plon - m_fGeoAnchorLong;
 	double a = sphSqr ( sin ( dlat/2 ) ) + cos(plat)*cos(m_fGeoAnchorLat)*sphSqr(sin(dlon/2));
 	double c = 2*asin ( Min ( 1, sqrt(a) ) );
-	return (float)(R*c);
-}
-
-void ExprGeodist_t::GetDependencyColumns ( CSphVector<int> & dColumns ) const
+	return (float)(R*c);Command ( ESphExprCommand eCmd, void * pArg ) const
 {
-	dColumns.Add ( m_iLat );
-	dColumns.Add ( m_iLon );
+	if ( eCmd==SPH_EXPR_GET_DEPENDENT_COLS )
+	{
+		static_cast < CSphVector<int>* >(pArg)->Add ( m_iLat );
+		static_cast < CSphVector<int>* >(pArg)->Add ( m_iLon );
+	}
 }
 
 //////////////////////////////////////////////////////////////////////////
 // PUBLIC FUNCTIONS (FACTORY AND FLATTENING)
 //////////////////////////////////////////////////////////////////////////
+
+//////////////////////
 
 static CSphGrouper * sphCreateGrouperString ( const CSphAttrLocator & tLoc, ESphCollation eCollation );
 
@@ -2930,8 +2930,7 @@ static bool FixupDependency ( CSphSchema & tSchema, const int * pAttrs, int iAtt
 	for ( int i=0; i<dCur.GetLength(); i++ )
 	{
 		const CSphColumnInfo & tCol = tSchema.GetAttr ( dCur[i] );
-		if ( tCol.m_eStage>SPH_EVAL_PRESORT && tCol.m_pExpr.Ptr()!=NULL )
-			tCol.m_pExpr->GetDependencyColumns ( dCur );
+		if ( tCol.m_eStage>SPH_EVAL_PRESORT && tCol.m_pExpr.Ptr()!=Command ( SPH_EXPR_GET_DEPENDENT_COLS, &>GetDependencyColumns ( dCur );
 	}
 
 	// get rid of dupes
@@ -2971,10 +2970,11 @@ struct ExprSortStringAttrFixup_c : public ISphExpr
 	virtual int64_t Int64Eval ( const CSphMatch & tMatch ) const
 	{
 		SphAttr_t uOff = tMatch.GetAttr ( m_tLocator );
-		return (int64_t)( m_pStrings && uOff ? m_pStrings + uOff : NULL );
-	}
-
-	virtual void SetStringPool ( const BYTE * pStrings ) { m_pStr// expression that transform string pool base + offset -> ptr
+		return (int64_t)( m_pStrings && uOff ? m_pStrings + uOff : NUCommand ( ESphExprCommand eCmd, void * pArg )
+	{
+		if ( eCmd==SPH_EXPR_SET_STRING_POOL )
+			m_pStrings = (const BYTE*)pArg;
+	 m_pStr// expression that transform string pool base + offset -> ptr
 struct ExprSortJson2StringPtr ExprSortStringAttrFixup_c : public ISphExpr
 {
 	const BYTE *			m_pStrings; ///< string pool; base for offset of string attributes
@@ -3072,10 +3072,11 @@ struct ExprSortJson2StringPtr ExprSortStringAttrFixup_c : public ISphExpr
 
 		int iStriLen = sVal.Length();
 		*ppStr = (const BYTE *)sVal.Leak();
-		return iStriLenpStrings + uOff : NULL );
-	}
-
-	virtual void SetStringPool ( const BYTE * pStrings ) { m_pStrings = pStrings; }
+		return iStriLenpStrings + uOff : NUCommand ( ESphExprCommand eCmd, void * pArg )
+	{
+		if ( eCmd==SPH_EXPR_SET_STRING_POOL )
+			m_pStrings = (const BYTE*)pArg;
+	 m_pStrings = pStrings; }
 };
 
 
@@ -3578,8 +3579,8 @@ static ISphMatchSorter * CreatePlainSorter ( ESphSortFunc eMatchFunc, bool bKbuf
 		case FUNC_TIMESEGS:		return CreatePlainSorter<MatchTimeSegments_fn>	( bKbuffer,, bFactor, iMaxMatches, bUsesAttrs ); break;
 		case FUNC_GENERIC2:		return CreatePlainSorter<MatchGeneric2_fn>		( bKbuffer,, bFactor, iMaxMatches, bUsesAttrs ); break;
 		case FUNC_GENERIC3:		return CreatePlainSorter<MatchGeneric3_fn>		( bKbuffer,, bFactors ); break;
-		case FUNC_GENERIC4:		return CreatePlainSorter<MatchGeneric4_fn>		( bKbuffer, iMaxMatches, bUsesAttrs, bFactor, iMaxMatches, bUsesAttrs ); break;
-		case FUNC_GENERIC5:		return Creatc5_fn>		( bKbuffer, iMaxMatches, bUsesAttrs, bFactors ); break;
+		case FUNC_GENERIC4:		return CreatePlainSorter<MatchGeneric4_fn>		( bKbuffer, iMaxMatches, bUsesAttrs, bFactors ); break;
+		case FUNC_GENERIC5:		return CreatePlainSorter<MatchGeneric5_fn>		( bKbuffer, iMaxMatches, bUsesAttrs, bFactors ); break;
 		case FUNC_CUSTOM:		return CreatePlainSorter<MatchCustom_fn>		( bKbuffer, iMaxMatches, bUsesAttrs, bFactors ); break;
 		case FUNC_EXPR:			return CreatePlainSorter<MatchExpr_fn>			( bKbuffer, iMaxMatches, bUsesAttrs, bFactors ); break;
 		default:				return NULL;
@@ -3831,7 +3832,7 @@ ISphMatchSorter * sphCreateQueue ( const CSphQuery * pQuery, const CSphSchema & 
 				// but it might depend on some preceding columns
 				// lets detect those and move them to prefilter \ presort phase too
 				CSphVector<int> dCur;
-				tExprCol.m_pExpr->GetDependencyColumns ( dCur );
+				tExprCol.m_pExpr->Command ( SPH_EXPR_GET_DEPENDENT_COLS, &dCur );
 
 				// usual filter
 				tExprCol.m_eStage = SPH_EVAL_PREFILTER;
@@ -3845,7 +3846,7 @@ ISphMatchSorter * sphCreateQueue ( const CSphQuery * pQuery, const CSphSchema & 
 					}
 					if ( tCol.m_pExpr.Ptr() )
 					{
-						tCol.m_pExpr->GetDependencyColumns ( dCur );
+						tCol.m_pExpr->Command ( SPH_EXPR_GET_DEPENDENT_COLS, &dCur );
 					}
 				}
 				dCur.Uniq();
