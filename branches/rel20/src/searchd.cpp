@@ -1329,7 +1329,6 @@ void Shutdown ()
 			g_tThdMutex.Lock();
 			g_dThd.Reset();
 			g_tThdMutex.Unlock();
-			g_tThdMutex.Done();
 			g_tFlushMutex.Done();
 		}
 
@@ -16156,7 +16155,7 @@ int WINAPI ServiceMain ( int argc, char **argv )
 	// in threaded mode, create a dedicated rotation thread
 	if ( g_eWorkers==MPM_THREADS )
 	{
-		if ( !g_tThdMutex.Init() || !g_tRotateQueueMutex.Init() || !g_tRotateConfigMutex.Init() )
+		if ( !g_tRotateQueueMutex.Init() || !g_tRotateConfigMutex.Init() )
 			sphDie ( "failed to init mutex" );
 
 		if ( g_bSeamlessRotate && !sphThreadCreate ( &g_tRotateThread, RotationThreadFunc , 0 ) )

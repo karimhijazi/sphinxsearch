@@ -2171,7 +2171,7 @@ protected:
 
 
 /// static mutex (for globals)
-class CSphStaticMutex : public CSphMutex
+class CSphStaticMutex : private CSphMutex
 {
 public:
 	CSphStaticMutex()
@@ -2182,6 +2182,16 @@ public:
 	~CSphStaticMutex()
 	{
 		Done();
+	}
+
+	bool Lock ()
+	{
+		return CSphMutex::Lock();
+	}
+
+	bool Unlock ()
+	{
+		return CSphMutex::Unlock();
 	}
 };
 
