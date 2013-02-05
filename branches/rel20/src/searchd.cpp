@@ -15871,6 +15871,7 @@ int WINAPI ServiceMain ( int argc, char **argv )
 	if ( bOptPIDFile && !sphLockEx ( g_iPidFD, false ) )
 		sphFatal ( "failed to lock pid file '%s': %s (searchd already running?)", g_sPidFile, strerror(errno) );
 
+	// Actions on resurrection
 	if ( bWatched && !bVisualLoad && CheckConfigChanges() )
 	{
 		// reparse the config file
@@ -15880,16 +15881,6 @@ int WINAPI ServiceMain ( int argc, char **argv )
 
 		sphInfo ( "Reconfigure the daemon" );
 		ConfigureSearchd ( hConf, bOptPIDFile );
-		// reinit the arena
-		const CSphConfigSection & hSearchd = hConf["searchd"]["searchd"];
-
-		sphInfo ( "Reload the indexes" );
-		const char * sArenaError = sphArenaInit ( hSearchd.GetSize ( "mva_updates_pool", MVA_UPDATES_POOL ) );
-		if ( sArenaError )
-			sphWarning ( "process shared mutex unsupported, MVA update disabled ( %s )", sArenaError );
-
-		// reload all the indexes
-		ConfigureAndPreload ( hConf, sOptIndex );
 	}
 
 	// hSearchdpre might be dead if we reloaded the config.
