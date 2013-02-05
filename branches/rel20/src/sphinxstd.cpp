@@ -1166,6 +1166,7 @@ bool sphIsLtLib()
 
 bool CSphMutex::Init ()
 {
+	assert ( !m_bInitialized );
 	m_hMutex = CreateMutex ( NULL, FALSE, NULL );
 	m_bInitialized = ( m_hMutex!=NULL );
 	return m_bInitialized;
@@ -1182,12 +1183,14 @@ bool CSphMutex::Done ()
 
 bool CSphMutex::Lock ()
 {
+	assert ( m_bInitialized );
 	DWORD uWait = WaitForSingleObject ( m_hMutex, INFINITE );
 	return ( uWait!=WAIT_FAILED && uWait!=WAIT_TIMEOUT );
 }
 
 bool CSphMutex::Unlock ()
 {
+	assert ( m_bInitialized );
 	return ReleaseMutex ( m_hMutex )==TRUE;
 }
 
@@ -1197,6 +1200,7 @@ bool CSphMutex::Unlock ()
 
 bool CSphMutex::Init ()
 {
+	assert ( !m_bInitialized );
 	m_bInitialized = ( pthread_mutex_init ( &m_tMutex, NULL )==0 );
 	return m_bInitialized;
 }
@@ -1212,11 +1216,13 @@ bool CSphMutex::Done ()
 
 bool CSphMutex::Lock ()
 {
+	assert ( m_bInitialized );
 	return ( pthread_mutex_lock ( &m_tMutex )==0 );
 }
 
 bool CSphMutex::Unlock ()
 {
+	assert ( m_bInitialized );
 	return ( pthread_mutex_unlock ( &m_tMutex )==0 );
 }
 

@@ -409,25 +409,9 @@ private:
 	IndexHash_c::HashEntry_t *	m_pIterator;
 };
 
-
-static IndexHash_c *						g_pIndexes = NULL;		// served indexes hash
-static CSphVector<const char *>				g_dRotating;			// names of indexes to be rotated this time
-static const char *							g_sPrereading	= NULL;	// name of index currently being preread
-static CSphIndex *							g_pPrereading	= NULL;	// rotation "buffer"
-
-static CSphMutex							g_tRotateQueueMutex;
-static CSphVector<CSphString>				g_dRotateQueue;		// FIXME? maybe replace it with lockless ring buffer
-static CSphMutex							g_tRotateConfigMutex;
-static SphThread_t							g_tRotateThread;
-static volatile bool						g_bRotateShutdown = false;
-
-/// flush parameters of rt indexes
-static SphThread_t							g_tRtFlushThread;
-static volatile bool						g_bRtFlushShutdown = false;
-
-struct DistributedMutex_t
+struct ThreadsOnlyMutex_t
 {
-	void Init ();
+	bool Init ();
 	void Done ();
 	void Lock ();
 	void Unlock ();
@@ -435,7 +419,36 @@ struct DistributedMutex_t
 private:
 	CSphMutex m_tLock;
 };
-static DistributedMutex_t					g_tDistLock;
+
+struct StaticThreadsOnlyMutex_t
+{
+	StaticThreadsOnlyMutex_t ();
+	~StaticThreadsOnlyMutex_t ();
+	void Lock ();
+	void Unlock ();
+
+private:
+	CSphMutex m_tLock;
+};
+
+
+
+static IndexHash_c *						g_pIndexes = NULL;		// served indexes hash
+static CSphVector<const char *>				g_dRotating;			// names of indexes to be rotated this time
+static const char *							g_sPrereading	= NULL;	// name of index currently being preread
+static CSphIndex *							g_pPrereading	= NULL;	// rotation "buffer"
+
+static ThreadsOnlyMutex_t					g_tRotateQueueMutex;
+static CSphVector<CSphString>				g_dRotateQueue;		// FIXME? maybe replace it with lockless ring buffer
+static ThreadsOnlyMutex_t					g_tRotateConfigMutex;
+static SphThread_t							g_tRotateThread;
+static volatile bool						g_bRotateShutdown = false;
+
+/// flush parameters of rt indexes
+static SphThread_t							g_tRtFlushThread;
+static volatile bool						g_bRtFlushShutdown = false;
+
+static StaticThreadsOnlyMutex_t				g_tDistLock;
 
 enum
 {
@@ -862,25 +875,49 @@ bool IndexHash_c::Exists ( const CSphString & tKey ) const
 //////////////////////////////////////////////////////////////////////////
 
 
-void DistributedMutex_t::Init ()
+bool ThreadsOnlyMutex_t::Init ()
 {
 	if ( g_eWorkers==MPM_THREADS )
-		m_tLock.Init();
+		return m_tLock.Init();
+	else
+		return true;
 }
 
-void DistributedMutex_t::Done ()
+void ThreadsOnlyMutex_t::Done ()
 {
 	if ( g_eWorkers==MPM_THREADS )
 		m_tLock.Done();
 }
 
-void DistributedMutex_t::Lock ()
+void ThreadsOnlyMutex_t::Lock ()
 {
 	if ( g_eWorkers==MPM_THREADS )
 		m_tLock.Lock();
 }
 
-void DistributedMutex_t::Unlock()
+void ThreadsOnlyMutex_t::Unlock()
+{
+	if ( g_eWorkers==MPM_THREADS )
+		m_tLock.Unlock();
+}
+
+StaticThreadsOnlyMutex_t::StaticThreadsOnlyMutex_t ()
+{
+	m_tLock.Init();
+}
+
+StaticThreadsOnlyMutex_t::~StaticThreadsOnlyMutex_t ()
+{
+	m_tLock.Done();
+}
+
+void StaticThreadsOnlyMutex_t::Lock ()
+{
+	if ( g_eWorkers==MPM_THREADS )
+		m_tLock.Lock();
+}
+
+void StaticThreadsOnlyMutex_t::Unlock()
 {
 	if ( g_eWorkers==MPM_THREADS )
 		m_tLock.Unlock();
@@ -1318,8 +1355,6 @@ void Shutdown ()
 			{
 				sphThreadJoin ( &g_tRotateThread );
 			}
-			g_tRotateQueueMutex.Done();
-			g_tRotateConfigMutex.Done();
 
 			int64_t tmShutStarted = sphMicroTimer();
 			// stop search threads; up to 3 seconds long
@@ -1331,6 +1366,9 @@ void Shutdown ()
 			g_tThdMutex.Unlock();
 			g_tFlushMutex.Done();
 		}
+		g_tRotateQueueMutex.Done();
+		g_tRotateConfigMutex.Done();
+
 
 #if !USE_WINDOWS
 		if ( g_eWorkers==MPM_FORK || g_eWorkers==MPM_PREFORK )
@@ -1384,7 +1422,6 @@ void Shutdown ()
 		g_pIndexes->Reset();
 
 		// clear shut down of rt indexes + binlog
-		g_tDistLock.Done();
 		SafeDelete ( g_pIndexes );
 		sphDoneIOStats();
 		sphRTDone();
@@ -8256,7 +8293,7 @@ CSphFilterSettings * SqlParser_c::AddFilter ( const CSphString & sCol, ESphFilte
 		return NULL;
 	}
 	CSphFilterSettings * pFilter = &m_pQuery->m_dFilters.Add();
-	pFilter->m_sAttrName = ( sCol=="id" ) ? "@id" : sCol ;
+	pFilter->m_sAttrName = ( sCol=="id" ) ? "@id" : sCol;
 	pFilter->m_eType = eType;
 	pFilter->m_sAttrName.ToLower();
 	return pFilter;
@@ -16152,19 +16189,18 @@ int WINAPI ServiceMain ( int argc, char **argv )
 	}
 #endif
 
+	if ( !g_tRotateQueueMutex.Init() || !g_tRotateConfigMutex.Init() )
+		sphDie ( "failed to init rotations mutexes" );
+
 	// in threaded mode, create a dedicated rotation thread
 	if ( g_eWorkers==MPM_THREADS )
 	{
-		if ( !g_tRotateQueueMutex.Init() || !g_tRotateConfigMutex.Init() )
-			sphDie ( "failed to init mutex" );
-
 		if ( g_bSeamlessRotate && !sphThreadCreate ( &g_tRotateThread, RotationThreadFunc , 0 ) )
 			sphDie ( "failed to create rotation thread" );
 
 		// reserving max to keep memory consumption constant between frames
 		g_dThd.Reserve ( g_iMaxChildren*2 );
 
-		g_tDistLock.Init();
 		g_tFlushMutex.Init();
 	}
 
