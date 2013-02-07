@@ -13600,9 +13600,11 @@ bool CSphIndex_VLN::Prealloc ( bool bMlock, bool bStripPath, CSphString & sWarni
 		if ( tDocinfo.GetFD()<0 )
 			return false;
 
-		int64_t iDocinfoSize = tDocinfo.GetSize ( iEntrySize, true, m_sLastError ) / sizeof(DWORD);
-		if ( iDocinfoSize<0 || !m_sLastError.IsEmpty() )
+		int64_t iDocinfoSize = tDocinfo.GetSize ( iEntrySize, true, m_sLastError );
+		if ( iDocinfoSize<0 )
 			return false;
+
+		iDocinfoSize = iDocinfoSize / sizeof(DWORD);
 
 		// min-max index 32 bit overflow fix-up
 		if ( m_uMinMaxIndex && iDocinfoSize/sizeof(DWORD)>UINT_MAX )
