@@ -13879,6 +13879,7 @@ bool CSphIndex_VLN::Preread ()
 	// build attributes hash
 	if ( m_pDocinfo.GetLength() && m_pDocinfoHash.GetLength() )
 	{
+		sphLogDebug ( "Hashing docinfo" );
 		int iStride = DOCINFO_IDSIZE + m_tSchema.GetRowSize();
 		SphDocID_t uFirst = DOCINFO2ID ( &m_pDocinfo[0] );
 		SphDocID_t uRange = DOCINFO2ID ( &m_pDocinfo[( int64_t ( m_uDocinfo-1 ) )*iStride] ) - uFirst;

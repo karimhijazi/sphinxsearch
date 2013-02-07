@@ -1613,11 +1613,7 @@ void SphCrashLogger_c::Done ()
 
 
 #if !USE_WINDOWS
-#ifndef NDEBUG
 void SphCrashLogger_c::HandleCrash ( int sig )
-#else
-void SphCrashLogger_c::HandleCrash ( int )
-#endif // NDEBUG
 #else
 LONG WINAPI SphCrashLogger_c::HandleCrash ( EXCEPTION_POINTERS * pExc )
 #endif // !USE_WINDOWS
@@ -1706,6 +1702,10 @@ LONG WINAPI SphCrashLogger_c::HandleCrash ( EXCEPTION_POINTERS * pExc )
 
 	// log trace
 #if !USE_WINDOWS
+	sphSafeInfo ( g_iLogFile, "Handling signal %d", sig );
+	// print message to stdout during daemon start
+	if ( g_bLogStdout && g_iLogFile!=STDOUT_FILENO )
+		sphSafeInfo ( STDOUT_FILENO, "Crash!!! Handling signal %d", sig );
 	sphBacktrace ( g_iLogFile, g_bSafeTrace );
 #else
 	sphBacktrace ( pExc, (char *)g_dCrashQueryBuff );
@@ -15886,6 +15886,30 @@ int WINAPI ServiceMain ( int argc, char **argv )
 	// hSearchdpre might be dead if we reloaded the config.
 	const CSphConfigSection & hSearchd = hConf["searchd"]["searchd"];
 
+	// handle my signals
+	SetSignalHandlers ();
+
+	// create logs
+	if ( !g_bOptNoLock )
+	{
+		// create log
+		OpenDaemonLog ( hSearchd, true );
+
+		// create query log if required
+		if ( hSearchd.Exists ( "query_log" ) )
+		{
+			if ( hSearchd["query_log"]=="syslog" )
+				g_bQuerySyslog = true;
+			else
+			{
+				g_iQueryLogFile = open ( hSearchd["query_log"].cstr(), O_CREAT | O_RDWR | O_APPEND, S_IREAD | S_IWRITE );
+				if ( g_iQueryLogFile<0 )
+					sphFatal ( "failed to open query log file '%s': %s", hSearchd["query_log"].cstr(), strerror(errno) );
+			}
+			g_sQueryLogFile = hSearchd["query_log"].cstr();
+		}
+	}
+
 	//////////////////////////////////////////////////
 	// shared stuff (perf counters, flushing) startup
 	//////////////////////////////////////////////////
@@ -15982,30 +16006,6 @@ int WINAPI ServiceMain ( int argc, char **argv )
 
 	if ( g_eWorkers==MPM_THREADS )
 		sphRTInit();
-
-	// handle my signals
-	SetSignalHandlers ();
-
-	// create logs
-	if ( !g_bOptNoLock )
-	{
-		// create log
-		OpenDaemonLog ( hSearchd, true );
-
-		// create query log if required
-		if ( hSearchd.Exists ( "query_log" ) )
-		{
-			if ( hSearchd["query_log"]=="syslog" )
-				g_bQuerySyslog = true;
-			else
-			{
-				g_iQueryLogFile = open ( hSearchd["query_log"].cstr(), O_CREAT | O_RDWR | O_APPEND, S_IREAD | S_IWRITE );
-				if ( g_iQueryLogFile<0 )
-					sphFatal ( "failed to open query log file '%s': %s", hSearchd["query_log"].cstr(), strerror(errno) );
-			}
-			g_sQueryLogFile = hSearchd["query_log"].cstr();
-		}
-	}
 
 	if ( !strcmp ( hSearchd.GetStr ( "query_log_format", "plain" ), "sphinxql" ) )
 		g_eLogFormat = LOG_FORMAT_SPHINXQL;
