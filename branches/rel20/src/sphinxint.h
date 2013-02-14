@@ -953,12 +953,19 @@ inline int sphUTF8Encode ( BYTE * pBuf, int iCode )
 		pBuf[1] = (BYTE)( ( iCode & 0x3F ) | 0x80 );
 		return 2;
 
-	} else
+	} else if ( iCode<0x8000 )
 	{
 		pBuf[0] = (BYTE)( ( (iCode>>12) & 0x0F ) | 0xE0 );
 		pBuf[1] = (BYTE)( ( (iCode>>6) & 0x3F ) | 0x80 );
 		pBuf[2] = (BYTE)( ( iCode & 0x3F ) | 0x80 );
 		return 3;
+	} else
+	{
+		pBuf[0] = (BYTE)( ( (iCode>>18) & 0x0F ) | 0xF0 );
+		pBuf[1] = (BYTE)( ( (iCode>>12) & 0x3F ) | 0x80 );
+		pBuf[2] = (BYTE)( ( (iCode>>6) & 0x3F ) | 0x80 );
+		pBuf[3] = (BYTE)( ( iCode & 0x3F ) | 0x80 );
+		return 4;
 	}
 }
 
