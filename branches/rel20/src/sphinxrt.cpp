@@ -920,6 +920,7 @@ public:
 	void	Replay ( const SmallStringHash_T<CSphIndex*> & hIndexes, DWORD uReplayFlags, ProgressCallbackSimple_t * pfnProgressCallback );
 
 	void	CreateTimerThread ();
+	bool	IsActive ()			{ return !m_bDisabled; }
 
 private:
 	static const DWORD		BINLOG_VERSION = 4;
@@ -1179,7 +1180,7 @@ static int64_t g_iRtFlushPeriod = 10*60*60; // default period is 10 hours
 void RtIndex_t::CheckRamFlush ()
 {
 	int64_t tmSave = sphMicroTimer();
-	if ( m_iTID<=m_iSavedTID || ( tmSave-m_tmSaved )/1000000<g_iRtFlushPeriod )
+	if ( ( g_pRtBinlog->IsActive() && m_iTID<=m_iSavedTID ) || ( tmSave-m_tmSaved )/1000000<g_iRtFlushPeriod )
 		return;
 
 	m_tRwlock.ReadLock();
@@ -1198,7 +1199,7 @@ void RtIndex_t::CheckRamFlush ()
 void RtIndex_t::ForceRamFlush ( bool bPeriodic )
 {
 	int64_t tmSave = sphMicroTimer();
-	if ( m_iTID<=m_iSavedTID )
+	if ( g_pRtBinlog->IsActive() && m_iTID<=m_iSavedTID )
 		return;
 
 	m_tWriterMutex.Lock();
