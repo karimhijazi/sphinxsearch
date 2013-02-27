@@ -7623,9 +7623,9 @@ enum SqlStmt_e
 
 const char * g_dSqlStmts[STMT_TOTAL] =
 {
-	"parse_error", "select", "insert", "replace", "delete", "show_warnings",
+	"parse_error", "dummy", "select", "insert", "replace", "delete", "show_warnings",
 	"show_status", "show_meta", "set", "begin", "commit", "rollback", "call",
-	"desc", "show_tables", "update"
+	"desc", "show_tables", "update", "create_func", "drop_func", "attach_index", "flush_rtindex", "show_variables"
 };
 
 
@@ -11661,11 +11661,7 @@ void HandleMysqlMultiStmt ( NetOutputBuffer_c & tOut, BYTE uPacketID, const CSph
 		if ( dStmt[i].m_eStmt==STMT_SELECT )
 			iSelect++;
 
-	if ( !iSelect )
-	{
-		tLastMeta = CSphQueryResultMeta();
-		return;
-	}
+	CSphQueryResultMeta tPrevMeta = tLastMeta;
 
 	if ( pThd )
 		pThd->m_sCommand = g_dSqlStmts[STMT_SELECT];
@@ -11682,11 +11678,14 @@ void HandleMysqlMultiStmt ( NetOutputBuffer_c & tOut, BYTE uPacketID, const CSph
 	}
 
 	// do search
-	bool bSearchOK = HandleMysqlSelect ( tOut, uPacketID, tHandler );
+	bool bSearchOK = true;
+	if ( iSelect )
+	{
+		bSearchOK = HandleMysqlSelect ( tOut, uPacketID, tHandler );
 
-	// save meta for SHOW *
-	CSphQueryResultMeta tPrevMeta = tLastMeta;
-	tLastMeta = tHandler.m_dResults.Last();
+		// save meta for SHOW *
+		tLastMeta = tHandler.m_dResults.Last();
+	}
 
 	if ( !bSearchOK )
 		return;
@@ -12098,6 +12097,7 @@ public:
 		// handle multi SQL query
 		if ( bParsedOK && dStmt.GetLength()>1 )
 		{
+			m_sError = "";
 			HandleMysqlMultiStmt ( tOut, uPacketID, dStmt, m_tLastMeta, dRows, pThd, m_sError );
 			return;
 		}
