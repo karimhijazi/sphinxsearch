@@ -2002,6 +2002,7 @@ public:
 			pTo->m_iTag = iTag;
 
 		m_iTotal = 0;
+		m_bDataInitialized = false;
 
 		if ( DISTINCT )
 			m_dUniq.Resize(0);
@@ -3598,7 +3599,8 @@ static ISphMatchSorter * CreatePlainSorter ( ESphSortFunc eMatchFunc, bool bKbuf
 {
 	switch ( eMatchFunc )
 	{
-		case FUNC_REL_DESC:		return CreatePlainSorter<MatchRelevanceLt_fn>	( bKbuffer,, bFactor, iMaxMatches, bUsesAttrs )R_DESC:	return CreatePlainSorter<MatchAttrLt_fn>		( bKbuffer, iMaxMatches, bUsesAttrs, bFactors ); break;
+		case FUNC_REL_DESC:		return CreatePlainSorter<MatchRelevanceLt_fn>	( bKbuffer,, bFactors ); break;
+		case FUNC_ATTR_DESC:	return CreatePlainSorter<MatchAttrLt_fn>		( bKbuffer, iMaxMatches, bUsesAttrs, bFactors ); break;
 		case FUNC_ATTR_ASC:		return CreatePlainSorter<MatchAttrGt_fn>		( bKbuffer, iMaxMatches, bUsesAttrs, bFactors ); break;
 		case FUNC_TIMESEGS:		return CreatePlainSorter<MatchTimeSegments_fn>	( bKbuffer, iMaxMatches, bUsesAttrs, bFactors ); break;
 		case FUNC_GENERIC2:		return CreatePlainSorter<MatchGeneric2_fn>		( bKbuffer, iMaxMatches, bUsesAttrs, bFactors ); break;
