@@ -6529,7 +6529,7 @@ attribute name (or sorting clause for "extended") is also required after a colon
 ... WHERE query='test;cutoff=10000;';
 </programlisting>
 </para></listitem>
-<listitem><para>maxquerytme - maximum allowed query time (in milliseconds), as in
+<listitem><para>maxquerytime - maximum allowed query time (in milliseconds), as in
 <link linkend="api-func-setmaxquerytime">SetMaxQueryTime()</link> API call:
 <programlisting>
 ... WHERE query='test;maxquerytime=1000;';
