@@ -16008,7 +16008,7 @@ int WINAPI ServiceMain ( int argc, char **argv )
 	///////////
 
 	if ( g_eWorkers==MPM_THREADS )
-		sphRTInit();
+		sphRTInit( hSearchd, bTestMode );
 
 	if ( !strcmp ( hSearchd.GetStr ( "query_log_format", "plain" ), "sphinxql" ) )
 		g_eLogFormat = LOG_FORMAT_SPHINXQL;
