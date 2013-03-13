@@ -1794,7 +1794,7 @@ yyreduce:
 			if ( !pFilter )
 				YYERROR;
 			pFilter->m_dValues = *yyvsp[-1].m_pValues.Ptr();
-			pFilter->m_dValues.Sort();
+			pFilter->m_dValues.Uniq();
 		;}
     break;
 
@@ -1806,7 +1806,7 @@ yyreduce:
 				YYERROR;
 			pFilter->m_dValues = *yyvsp[-1].m_pValues.Ptr();
 			pFilter->m_bExclude = true;
-			pFilter->m_dValues.Sort();
+			pFilter->m_dValues.Uniq();
 		;}
     break;
 
