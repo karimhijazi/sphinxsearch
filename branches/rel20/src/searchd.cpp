@@ -1130,50 +1130,129 @@ void LogWarning ( const char * sWarning )
 
 /////////////////////////////////////////////////////////////////////////////
 
-struct StrBuf_t
+// string buffer
+// it's usually static(2k) but could grow dynamically then necessary
+class StringBuffer_c : ISphNoncopyable
 {
-protected:
-	char		m_sBuf [ 2048 ];
-	char *		m_pBuf;
-	int			m_iLeft;
+private:
+#define MAX_STATIC_BUFFER 2048
+	char m_sStatic [ MAX_STATIC_BUFFER ];
+	char * m_pDynamic;
+	char * m_pCur;
+	int m_iSize;
 
 public:
-	StrBuf_t ()
+	StringBuffer_c ()
+		: m_pDynamic ( NULL )
+		, m_iSize ( MAX_STATIC_BUFFER )
 	{
-		memset ( m_sBuf, 0, sizeof(m_sBuf) );
-		m_iLeft = sizeof(m_sBuf)-1;
-		m_pBuf = m_sBuf;
+		m_pCur = m_sStatic;
 	}
 
-	const char * cstr ()
+	~StringBuffer_c ()
 	{
-		return m_sBuf;
+		SafeDeleteArray ( m_pDynamic );
 	}
 
-	int GetLength ()
+	void Append ( const char * sFormat, ... ) __attribute__ ( ( format ( printf, 2, 3 ) ) )
 	{
-		return sizeof(m_sBuf)-1-m_iLeft;
+		if ( !sFormat || !*sFormat )
+			return;
+
+		for ( ;; )
+		{
+			int iLen = -1;
+			if ( Left()>0 )
+			{
+				va_list ap;
+				va_start ( ap, sFormat );
+				iLen = vsnprintf ( m_pCur, Left(), sFormat, ap );
+				va_end ( ap );
+			}
+
+			if ( iLen!=-1 && Length()+iLen<m_iSize )
+			{
+				m_pCur += iLen;
+				break;
+			} else
+			{
+				Grow();
+			}
+		}
 	}
 
-	bool Append ( const char * s, bool bWhole )
+	void AppendEscapedFixupSpace ( const char * sText )
 	{
-		if ( !s )
-			return false;
-		int iLen = strlen(s);
-		if ( bWhole && m_iLeft<iLen )
-			return false;
+		if ( !sText || !*sText )
+			return;
 
-		iLen = Min ( m_iLeft, iLen );
-		memcpy ( m_pBuf, s, iLen );
-		m_pBuf += iLen;
-		m_iLeft -= iLen;
-		return true;
+		const char * pBuf = sText;
+		int iEsc = 0;
+		for ( ; *pBuf; )
+		{
+			char s = *pBuf++;
+			iEsc = ( s=='\\' || s=='\'' ) ? ( iEsc+1 ) : iEsc;
+		}
+
+		int iLen = pBuf-sText;
+
+		if ( Left()<iLen+iEsc )
+			Grow ( iLen+iEsc );
+
+		pBuf = sText;
+		for ( ; *pBuf; )
+		{
+			char s = *pBuf++;
+			if ( s=='\\' || s=='\'' )
+			{
+				*m_pCur++ = '\\';
+				*m_pCur++ = s;
+			} else if ( sphIsSpace ( s ) )
+			{
+				*m_pCur++ = ' ';
+			} else
+			{
+				*m_pCur++ = s;
+			}
+		}
 	}
 
-	const StrBuf_t & operator += ( const char * s )
+	void AppendCurrentTime ()
+	{
+		if ( Left()<64 )
+			Grow ();
+
+		int iLen = sphFormatCurrentTime ( m_pCur, Left() );
+		assert ( Length()+iLen<=m_iSize );
+		m_pCur += iLen;
+	}
+
+	int Length() const { return m_pDynamic ? ( m_pCur-m_pDynamic ) : ( m_pCur-m_sStatic ); }
+
+	const char * cstr () const { return m_pDynamic ? m_pDynamic : m_sStatic; }
+
+	const StringBuffer_c & operator += ( const char * s )
 	{
 		Append ( s, false );
 		return *this;
+	}
+
+private:
+	int Left () const { return m_iSize-Length(); }
+
+	void Grow ( int iAdd=0 )
+	{
+		int iNewLen = m_iSize*2;
+		if ( ( m_iSize+iAdd )>( m_iSize*2 ) )
+			iNewLen = m_iSize+iAdd;
+
+		int iUsed = Length();
+		char * pDynamic = new char [iNewLen];
+		memcpy ( pDynamic, m_pDynamic ? m_pDynamic : m_sStatic, iUsed );
+		SafeDeleteArray ( m_pDynamic );
+		m_pDynamic = pDynamic;
+		m_pCur = pDynamic + iUsed;
+		m_iSize = iNewLen;
 	}
 };
 
@@ -1252,7 +1331,7 @@ public:
 		return m_dLog.GetLength()==0;
 	}
 
-	void BuildReport ( StrBuf_t & sReport )
+	void BuildReport ( StringBuffer_c & sReport )
 	{
 		if ( IsEmpty() )
 			return;
@@ -1269,7 +1348,7 @@ public:
 					continue;
 
 			// build current span
-			StrBuf_t sSpan;
+			StringBuffer_c sSpan;
 			if ( iSpanStart )
 				sSpan += "; ";
 			sSpan += "index ";
@@ -1280,12 +1359,10 @@ public:
 				sSpan += m_dLog[j].m_sIndex.cstr();
 			}
 			sSpan += ": ";
-			if ( !sSpan.Append ( m_dLog[iSpanStart].m_sError.cstr(), true ) )
-				break;
+			sSpan.Append ( m_dLog[iSpanStart].m_sError.cstr(), true );
 
 			// flush current span
-			if ( !sReport.Append ( sSpan.cstr(), true ) )
-				break;
+			sReport.Append ( sSpan.cstr(), true );
 
 			// done
 			iSpanStart = i;
@@ -4663,128 +4740,6 @@ void LogQueryPlain ( const CSphQuery & tQuery, const CSphQueryResult & tRes )
 }
 
 
-// string buffer
-// it's usually static(2k) but could grow dynamically then necessary
-class StringBuffer_c : ISphNoncopyable
-{
-private:
-#define MAX_STATIC_BUFFER 2048
-	char m_sStatic [ MAX_STATIC_BUFFER ];
-	char * m_pDynamic;
-	char * m_pCur;
-	int m_iSize;
-
-public:
-	StringBuffer_c ()
-		: m_pDynamic ( NULL )
-		, m_iSize ( MAX_STATIC_BUFFER )
-	{
-		m_pCur = m_sStatic;
-	}
-
-	~StringBuffer_c ()
-	{
-		SafeDeleteArray ( m_pDynamic );
-	}
-
-
-	void Append ( const char * sFormat, ... ) __attribute__ ( ( format ( printf, 2, 3 ) ) )
-	{
-		if ( !sFormat || !*sFormat )
-			return;
-
-		for ( ;; )
-		{
-			int iLen = -1;
-			if ( Left()>0 )
-			{
-				va_list ap;
-				va_start ( ap, sFormat );
-				iLen = vsnprintf ( m_pCur, Left(), sFormat, ap );
-				va_end ( ap );
-			}
-
-			if ( iLen!=-1 && Length()+iLen<m_iSize )
-			{
-				m_pCur += iLen;
-				break;
-			} else
-			{
-				Grow();
-			}
-		}
-	}
-
-	void AppendEscapedFixupSpace ( const char * sText )
-	{
-		if ( !sText || !*sText )
-			return;
-
-		const char * pBuf = sText;
-		int iEsc = 0;
-		for ( ; *pBuf; )
-		{
-			char s = *pBuf++;
-			iEsc = ( s=='\\' || s=='\'' ) ? ( iEsc+1 ) : iEsc;
-		}
-
-		int iLen = pBuf-sText;
-
-		if ( Left()<iLen+iEsc )
-			Grow ( iLen+iEsc );
-
-		pBuf = sText;
-		for ( ; *pBuf; )
-		{
-			char s = *pBuf++;
-			if ( s=='\\' || s=='\'' )
-			{
-				*m_pCur++ = '\\';
-				*m_pCur++ = s;
-			} else if ( sphIsSpace ( s ) )
-			{
-				*m_pCur++ = ' ';
-			} else
-			{
-				*m_pCur++ = s;
-			}
-		}
-	}
-
-	void AppendCurrentTime ()
-	{
-		if ( Left()<64 )
-			Grow ();
-
-		int iLen = sphFormatCurrentTime ( m_pCur, Left() );
-		assert ( Length()+iLen<=m_iSize );
-		m_pCur += iLen;
-	}
-
-	int Length() const { return m_pDynamic ? ( m_pCur-m_pDynamic ) : ( m_pCur-m_sStatic ); }
-
-	const char * cstr () const { return m_pDynamic ? m_pDynamic : m_sStatic; }
-
-private:
-	int Left () const { return m_iSize-Length(); }
-
-	void Grow ( int iAdd=0 )
-	{
-		int iNewLen = m_iSize*2;
-		if ( ( m_iSize+iAdd )>( m_iSize*2 ) )
-			iNewLen = m_iSize+iAdd;
-
-		int iUsed = Length();
-		char * pDynamic = new char [iNewLen];
-		memcpy ( pDynamic, m_pDynamic ? m_pDynamic : m_sStatic, iUsed );
-		SafeDeleteArray ( m_pDynamic );
-		m_pDynamic = pDynamic;
-		m_pCur = pDynamic + iUsed;
-		m_iSize = iNewLen;
-	}
-};
-
-
 void FormatOrderBy ( StringBuffer_c * pBuf, const char * sPrefix, ESphSortOrder eSort, const CSphString & sSort )
 {
 	assert ( pBuf );
@@ -6369,13 +6324,13 @@ void SearchHandler_c::RunUpdates ( const CSphQuery & tQuery, const CSphString & 
 
 	if ( !tRes.m_iSuccesses )
 	{
-		StrBuf_t sFailures;
+		StringBuffer_c sFailures;
 		m_dFailuresSet[0].BuildReport ( sFailures );
 		*pUpdates->m_pError = sFailures.cstr();
 
 	} else if ( !tRes.m_sError.IsEmpty() )
 	{
-		StrBuf_t sFailures;
+		StringBuffer_c sFailures;
 		m_dFailuresSet[0].BuildReport ( sFailures );
 		tRes.m_sWarning = sFailures.cstr(); // FIXME!!! commint warnings too
 	}
@@ -7382,7 +7337,7 @@ void SearchHandler_c::RunSubset ( int iStart, int iEnd )
 		// if there were no successful searches at all, this is an error
 		if ( !tRes.m_iSuccesses )
 		{
-			StrBuf_t sFailures;
+			StringBuffer_c sFailures;
 			m_dFailuresSet[iRes].BuildReport ( sFailures );
 
 			tRes.m_sError = sFailures.cstr();
@@ -7416,7 +7371,7 @@ void SearchHandler_c::RunSubset ( int iStart, int iEnd )
 
 		if ( !m_dFailuresSet[iRes].IsEmpty() )
 		{
-			StrBuf_t sFailures;
+			StringBuffer_c sFailures;
 			m_dFailuresSet[iRes].BuildReport ( sFailures );
 			tRes.m_sWarning = sFailures.cstr();
 		}
@@ -9705,7 +9660,7 @@ void HandleCommandUpdate ( int iSock, int iVer, InputBuffer_c & tReq )
 	}
 
 	// serve reply to client
-	StrBuf_t sReport;
+	StringBuffer_c sReport;
 	dFails.BuildReport ( sReport );
 
 	if ( !iSuccesses )
@@ -11200,7 +11155,7 @@ void HandleMysqlUpdate ( NetOutputBuffer_c & tOut, BYTE uPacketID, const SqlStmt
 		}
 	}
 
-	StrBuf_t sReport;
+	StringBuffer_c sReport;
 	dFails.BuildReport ( sReport );
 
 	if ( !iSuccesses )
