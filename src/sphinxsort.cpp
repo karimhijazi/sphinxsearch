@@ -2151,6 +2151,12 @@ protected:
 			// if new entry is more relevant, update from it
 			if ( tEntry.m_iDocID<m_tData.m_iDocID )
 			{
+				if ( NOTIFICATIONS )
+				{
+					m_iJustPushed = tEntry.m_iDocID;
+					m_dJustPopped.Add ( m_tData.m_iDocID );
+				}
+
 				// can't use Clone() here; must keep current aggregate values
 				m_tData.m_iDocID = tEntry.m_iDocID;
 				m_tData.m_iWeight = tEntry.m_iWeight;
@@ -3569,12 +3575,11 @@ void sphCollationInit()
 		g_dCollWeights_UTF8CI[i+0xa00] = (unsigned short)( 0xff00 + i - ( i>=0x41 && i<=0x5a )*32 ); // ff41..ff5a, -32
 	}
 
-	// generate planes table
-	for ( int i=0; i<0x100; i++ )
+	// generate planes ta100; i++ )
 		g_dCollPlanes_UTF8CI[i] = NULL;
 
 	for ( int i=0; i<0x0b; i++ )
-		g_dCollPlanes_UTF8Cg_dCollWeights_UTF8CI + 0x100*i;
+		g_dCollPlanes_UTF8CI [ dWeightPlane[i] ] = g_dCollWeights_UTF8CI + 0x100*i;
 }
 
 
