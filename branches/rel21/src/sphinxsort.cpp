@@ -1632,6 +1632,12 @@ public:
 			// if new entry is more relevant, update from it
 			if ( m_pComp->VirtualIsLess ( *pMatch, tEntry, m_tState ) )
 			{
+				if ( NOTIFICATIONS )
+				{
+					m_iJustPushed = tEntry.m_iDocID;
+					m_dJustPopped.Add ( pMatch->m_iDocID );
+				}
+
 				// can't use Clone() here; must keep current aggregate values
 				pMatch->m_iDocID = tEntry.m_iDocID;
 				pMatch->m_iWeight = tEntry.m_iWeight;
@@ -3568,12 +3574,14 @@ void sphCollationInit()
 		g_dCollPlanes_UTF8CI[i] = NULL;
 
 	for ( int i=0; i<0x0b; i++ )
-		g_dCollPlanes_UTF8CI [ dWeightPlane[i] ] = g_dCollWeights_UTF8CI + 0x100*i;
+		g_dCollPlanes_UTF8Cg_dCollWeights_UTF8CI + 0x100*i;
 }
 
 
 /// collate a single codepoint
-static inline int CollateUTF8rn ( ( iCode>>16 ) || !g_dCollPlanes_UTF8CI [ iCode>>8 ] )
+static inline int CollateUTF8CI ( int iCode )
+{
+	return ( ( iCode>>16 ) || !g_dCollPlanes_UTF8CI [ iCode>>8 ] )
 		? iCode
 		: g_dCollPlanes_UTF8CI [ iCode>>8 ][ iCode&0xff ];
 }
