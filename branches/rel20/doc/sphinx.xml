@@ -5,16 +5,16 @@
 ]>
 <book lang="en">
 
-<title>Sphinx 2.0.7-dev reference manual</title>
+<title>Sphinx 2.0.7-release reference manual</title>
 <subtitle>Free open-source SQL full-text search engine</subtitle>
 
 <bookinfo>
 <copyright>
-<year>2001-2012</year>
+<year>2001-2013</year>
 <holder>Andrew Aksyonoff</holder>
 </copyright>
 <copyright>
-<year>2008-2012</year>
+<year>2008-2013</year>
 <holder>Sphinx Technologies Inc, <ulink 
 url="http://sphinxsearch.com">http://sphinxsearch.com</ulink></holder>
 </copyright>
@@ -11266,7 +11266,7 @@ prefork_rotation_throttle = 50 # throttle children restarts by 50 msec each
 
 <appendix id="changelog"><title>Sphinx revision history</title>
 
-<sect1 id="rel207"><title>Version 2.0.7-release, 26 feb 2013</title>
+<sect1 id="rel207"><title>Version 2.0.7-release, 26 mar 2013</title>
 <bridgehead>Bug fixes</bridgehead>
 <itemizedlist>
 <listitem><para>fixed #1475, memory leak in the expression parser</para></listitem>
