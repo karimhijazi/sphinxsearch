@@ -697,9 +697,10 @@ class Binarycc;
 class Utf8CIHash_fn
 {
 public:
-	uint64_t Hash ( const BYTE * pStr, int iLen ) const
+	uint64_t Hash ( con, uint64_t uPrev=SPH_FNV64_SEED ) const
 	{
-		a		return sphFNV64 ( pStr, iLen );
+		assert ( pStr && iLen );
+		return sphFNV64 ( pStr, iLen, uPrev );
 	}
 };
 
@@ -754,9 +755,104 @@ public:
 	}
 };
 
-//////////////////////////////////////////////////////////////////////////
+template <class PRED>
+class CSphGrouperMulti : public CSphGrouper, public PRED
+{
+public:
+	CSphGrouperMulti ( const CSphVector<CSphAttrLocator> & dLocators, const CSphVector<ESphAttr> & dAttrTypes, const CSphVector<CSphString> & dJsonKeys )
+		: m_dLocators ( dLocators )
+		, m_dAttrTypes ( dAttrTypes )
+	{
+		assert ( m_dLocators.GetLength()>1 );
+		assert ( m_dLocators.GetLength()==m_dAttrTypes.GetLength() && m_dLocators.GetLength()==dJsonKeys.GetLength() );
+		ARRAY_FOREACH ( i, dJsonKeys )
+			m_dJsonKeys.Add ( JsonKey_t ( dJsonKeys[i].cstr() ) );
+	}
 
-/// simple fixed-size hash
+	virtual SphGroupKey_t KeyFromMatch ( const CSphMatch & tMatch ) const
+	{
+		SphGroupKey_t tKey = SPH_FNV64_SEED;
+
+		for ( int i=0; i<m_dLocators.GetLength(); i++ )
+		{
+			SphAttr_t tAttr = tMatch.GetAttr ( m_dLocators[i] );
+			if ( m_dAttrTypes[i]==SPH_ATTR_STRING )
+			{
+				assert ( m_pStringBase );
+
+				const BYTE * pStr = NULL;
+				int iLen = sphUnpackStr ( m_pStringBase+tAttr, &pStr );
+
+				if ( !pStr || !iLen )
+					continue;
+
+				tKey = PRED::Hash ( pStr, iLen, tKey );
+
+			} else if ( m_dAttrTypes[i]==SPH_ATTR_JSON )
+			{
+				assert ( m_pStringBase );
+
+				const BYTE * pStr = NULL;
+				int iLen = sphUnpackStr ( m_pStringBase+tAttr, &pStr );
+
+				if ( !pStr || !iLen )
+					continue;
+
+				const BYTE * pValue;
+				ESphJsonType eRes = sphJsonFindKey ( &pValue, pStr, m_dJsonKeys[i] );
+
+				int i32Val;
+				int64_t i64Val;
+				double fVal;
+				switch ( eRes )
+				{
+				case JSON_STRING:
+					iLen = sphJsonUnpackInt ( &pValue );
+					tKey = sphFNV64 ( pValue, iLen, tKey );
+					break;
+				case JSON_INT32:
+					i32Val = sphJsonLoadInt ( &pValue );
+					tKey = sphFNV64 ( (const BYTE *)&i32Val, sizeof(i32Val), tKey );
+					break;
+				case JSON_INT64:
+					i64Val = sphJsonLoadBigint ( &pValue );
+					tKey = sphFNV64 ( (const BYTE *)&i64Val, sizeof(i64Val), tKey );
+					break;
+				case JSON_DOUBLE:
+					fVal = sphQW2D ( sphJsonLoadBigint ( &pValue ) );
+					tKey = sphFNV64 ( (const BYTE *)&fVal, sizeof(fVal), tKey );
+					break;
+				default:
+					break;
+				}
+
+			} else
+				tKey = sphFNV64 ( (const BYTE *)&tAttr, sizeof(SphAttr_t), tKey );
+		}
+
+		return tKey;
+	}
+
+	virtual void SetStringPool ( const BYTE * pStrings )
+	{
+		m_pStringBase = pStrings;
+	}
+
+	virtual SphGroupKey_t KeyFromValue ( SphAttr_t ) const { assert(0); return SphGroupKey_t(); }
+	virtual void GetLocator ( CSphAttrLocator & ) const { assert(0); }
+	virtual ESphAttr GetResultType() const { return SPH_ATTR_BIGINT; }
+	virtual bool CanMulti () const { return false; }
+
+private:
+	CSphVector<CSphAttrLocator>	m_dLocators;
+	CSphVector<ESphAttr>		m_dAttrTypes;
+	const BYTE *				m_pStringBase;
+	CSphVector<JsonKey_t>		m_dJsonKeysT(4);
+		return false;
+	};
+};
+
+/////////////////////////////////////////////////////// simple fixed-size hash
 /// doesn't keep the order
 template < typename T, typename KEY, typename HASHFUNC >
 class CSphFixedHash : ISphNoncopyable
@@ -1534,6 +1630,12 @@ public:
 			// if new entry is more relevant, update from it
 			if ( m_pComp->VirtualIsLess ( *pMatch, tEntry, m_tState ) )
 			{
+				if ( NOTIFICATIONS )
+				{
+					m_iJustPushed = tEntry.m_iDocID;
+					m_dJustPopped.Add ( pMatch->m_iDocID );
+				}
+
 				// can't use Clone() here; must keep current aggregate values
 				pMatch->m_iDocID = tEntry.m_iDocID;
 				pMatch->m_iWeight = tEntry.m_iWeight;
@@ -2002,6 +2104,7 @@ public:
 			pTo->m_iTag = iTag;
 
 		m_iTotal = 0;
+		m_bDataInitialized = false;
 
 		if ( DISTINCT )
 			m_dUniq.Resize(0);
@@ -2046,6 +2149,12 @@ protected:
 			// if new entry is more relevant, update from it
 			if ( tEntry.m_iDocID<m_tData.m_iDocID )
 			{
+				if ( NOTIFICATIONS )
+				{
+					m_iJustPushed = tEntry.m_iDocID;
+					m_dJustPopped.Add ( m_tData.m_iDocID );
+				}
+
 				// can't use Clone() here; must keep current aggregate values
 				m_tData.m_iDocID = tEntry.m_iDocID;
 				m_tData.m_iWeight = tEntry.m_iWeight;
@@ -2846,7 +2955,8 @@ float ExprGeodist_t::Eval ( const CSphMatch & tMatch ) const
 
 //////////////////////
 
-static CSphGrouper * sphCreateGrouperString ( const CSphAttrLocator & tLoc, ESphCollation eCollation );
+static CSphGrouper * sphCreateGrouperString ( const CSphAttrLocator & tLoc, ESphstatic CSphGrouper * sphCreateGrouperMulti ( const CSphVector<CSphAttrLocator> & dLocators, const CSphVector<ESphAttr> & dAttrTypes,
+											const CSphVector<CSphString> & dJsonKeys, ESphCollation eCollationSphCollation eCollation );
 
 static bool SetupGroupbySettings ( const CSphQuery * pQuery, const							CSphGroupSorterSettings & tSettings, CSphString & sJsonColumn, CSphString & sError, bool bImplicitngs, CSphString & sError )
 {
@@ -2858,7 +2968,54 @@ static bool SetupGroupbySettings ( const CSphQuery * pQuery, const							CSphGro
 	if ( pQuery->m_eGroupFunc==SPH_GROUPBY_ATTRPAIR )
 	{
 		sError.SetSprintf ( "SPH_GROUPBY_ATTRPAIR is not supported any more (just group on 'bigint' attribute)" CSphString sJsonKey;
-	if ( sphJsonNameSplit ( pQuery->m_sGroupBy.cstr(), &sJsonColumn, &sJsonKey ) )
+	if ( pQuery->m_eGroupFunc==SPH_GROUPBY_MULTIPLE )
+	{
+		CSphVector<CSphAttrLocator> dLocators;
+		CSphVector<ESphAttr> dAttrTypes;
+		CSphVector<CSphString> dJsonKeys;
+
+		CSphVector<CSphString> dGroupBy;
+		const char * a = pQuery->m_sGroupBy.cstr();
+		const char * b = a;
+		while ( *a )
+		{
+			while ( *b && *b!=',' )
+				b++;
+			CSphString & sNew = dGroupBy.Add();
+			sNew.SetBinary ( a, b-a );
+			if ( *b==',' )
+				b += 2;
+			a = b;
+		}
+		dGroupBy.Uniq();
+
+		for ( int i=0; i<dGroupBy.GetLength(); i++ )
+		{
+			bool bJson = sphJsonNameSplit ( dGroupBy[i].cstr(), &sJsonColumn, &sJsonKey );
+			const CSphString & sGroupBy = bJson ? sJsonColumn : dGroupBy[i];
+
+			const int iAttr = tSchema.GetAttrIndex ( sGroupBy.cstr() );
+			if ( iAttr<0 )
+			{
+				sError.SetSprintf ( "group-by attribute '%s' not found", sGroupBy.cstr() );
+				return false;
+			}
+
+			ESphAttr eType = tSchema.GetAttr ( iAttr ).m_eAttrType;
+			if ( eType==SPH_ATTR_UINT32SET || eType==SPH_ATTR_INT64SET )
+			{
+				sError.SetSprintf ( "MVA values can't be used in multiple group-by" );
+				return false;
+			}
+
+			dLocators.Add ( tSchema.GetAttr ( iAttr ).m_tLocator );
+			dAttrTypes.Add ( eType );
+			dJsonKeys.Add ( bJson ? sJsonKey : "" );
+		}
+
+		tSettings.m_pGrouper = sphCreateGrouperMulti ( dLocators, dAttrTypes, dJsonKeys, pQuery->m_eCollation );
+
+	} else if ( sphJsonNameSplit ( pQuery->m_sGroupBy.cstr(), &sJsonColumn, &sJsonKey ) )
 	{
 		const int iAttr = tSchema.GetAttrIndex ( sJsonColumn.cstr() );
 		if ( iAttr<0 )
@@ -2885,6 +3042,7 @@ static bool SetupGroupbySettings ( const CSphQuery * pQuery, const							CSphGro
 	} else if ( bImplicit )
 	{
 		tSettings.m_bImplicit = true;
+
 	} else
 	{
 		// setup groupby attr
@@ -3415,8 +3573,7 @@ void sphCollationInit()
 		g_dCollWeights_UTF8CI[i+0xa00] = (unsigned short)( 0xff00 + i - ( i>=0x41 && i<=0x5a )*32 ); // ff41..ff5a, -32
 	}
 
-	// generate planes table
-	for ( int i=0; i<0x100; i++ )
+	// generate planes ta100; i++ )
 		g_dCollPlanes_UTF8CI[i] = NULL;
 
 	for ( int i=0; i<0x0b; i++ )
@@ -3434,13 +3591,14 @@ static inline int CollateUTF8CI ( int iCode )
 
 
 /// utf8_general_ci
-int CollateUtf8GeneralCI ( const BYTE * p, bool bPackedArg1, const BYTE * pArg2 )
+int CollateUtf8GeneralCI ( const BYTE * pArg1, const BYTE * pArg2, bool bPacked )
 {
 	// some const breakage and mess
 	// we MUST NOT actually modify the data
 	// but sphUTF8Decode() calls currently need non-const pointers
 	BYTE * pStr1 = (BYTE*) pArg1;
-	BYTE * const BYTE * pMax1 = NULL;
+	BYTE * pStr2 = (BYTE*) pArg2;
+	const BYTE * pMax1 = NULL;
 	const BYTE * pMax2 = NULL;
 	if ( bPacked )
 	{
@@ -3450,7 +3608,7 @@ int CollateUtf8GeneralCI ( const BYTE * p, bool bPackedArg1, const BYTE * pArg2 
 		pMax2 = pStr2 + iLen2;
 	}
 
-	while ( ( bPacked && pStr1<pMax1 && pStr2<pMax2 ) || ( !bPacked && *pStr1 && *pStr2 )tr1<pMax1 && pStr2<pMax2 )
+	while ( ( bPacked && pStr1<pMax1 && pStr2<pMax2 ) || ( !bPacked && *pStr1 && *pStr2 ) )
 	{
 		// FIXME! on broken data, decode might go beyond buffer bounds
 		int iCode1 = sphUTF8Decode ( pStr1 );
@@ -3465,7 +3623,10 @@ int CollateUtf8GeneralCI ( const BYTE * p, bool bPackedArg1, const BYTE * pArg2 
 		iCode1 = CollateUTF8CI ( iCode1 );
 		iCode2 = CollateUTF8CI ( iCode2 );
 		if ( iCode1!=iCode2 )
-			return ibPacked )
+			return iCode1-iCode2;
+	}
+
+	if ( bPacked )
 	{
 		if ( pStr1>=pMax1 && pStr2>=pMax2 )
 			return 0;
@@ -3475,7 +3636,7 @@ int CollateUtf8GeneralCI ( const BYTE * p, bool bPackedArg1, const BYTE * pArg2 
 		if ( !*pStr1 && !*pStr2 )
 			return 0;
 		return ( *pStr1 ? 1 : -1 );
-	}pStr1==pMax1 ) ? 1 : -1;
+	}
 }
 
 
@@ -3495,7 +3656,7 @@ public:
 		m_dBuf.Resize ( COLLATE_STACK_BUFFER );
 	}
 
-	uint64_t Hash ( const BYTE * pStr, int iLen ) const
+	uint64_t Hash ( const BYTE * pStr, int iLen, uint64_t uPrev=SPH_FNV64_SEED ) const
 	{
 		assert ( pStr && iLen );
 
@@ -3512,7 +3673,7 @@ public:
 		int iDstLen = strxfrm ( (char *)pDst, (const char *)m_dBuf.Begin(), iDstAvailable );
 		assert ( iDstLen<iDstAvailable+LOCALE_SAFE_GAP );
 
-		uint64_t uAcc = sphFNV64 ( pDst, iDstLen );
+		uint64_t uAcc = sphFNV64 ( pDst, iDstLen, uPrev );
 
 		return uAcc;
 	}
@@ -3522,11 +3683,11 @@ public:
 class LibcCIHash_fn
 {
 public:
-	uint64_t Hash ( const BYTE * pStr, int iLen ) const
+	uint64_t Hash ( const BYTE * pStr, int iLen, uint64_t uPrev=SPH_FNV64_SEED ) const
 	{
 		assert ( pStr && iLen );
 
-		uint64_t uAcc = SPH_FNV64_SEED;
+		uint64_t uAcc = uPrev;
 		while ( iLen-- )
 		{
 			int iChar = tolower ( *pStr++ );
@@ -3541,11 +3702,11 @@ public:
 class Utf8CIHash_fn
 {
 public:
-	uint64_t Hash ( const BYTE * pStr, int iLen ) const
+	uint64_t Hash ( const BYTE * pStr, int iLen, uint64_t uPrev=SPH_FNV64_SEED ) const
 	{
 		assert ( pStr && iLen );
 
-		uint64_t uAcc = SPH_FNV64_SEED;
+		uint64_t uAcc = uPrev;
 		while ( iLen-- )
 		{
 			BYTE * pCur = (BYTE *)pStr++;
@@ -3553,7 +3714,8 @@ public:
 			iCode = CollateUTF8CI ( iCode );
 			uAcc = sphFNV64 ( (const BYTE *)&iCode, 4, uAcc );
 		}
-( pStr, iLen );
+
+		return uAcc;
 	}
 };
 
@@ -3570,13 +3732,26 @@ CSphGrouper * sphCreateGrouperString ( const CSphAttrLocator & tLoc, ESphCollati
 		return new CSphGrouperString<BinaryHash_fn> ( tLoc );
 }
 
+CSphGrouper * sphCreateGrouperMulti ( const CSphVector<CSphAttrLocator> & dLocators, const CSphVector<ESphAttr> & dAttrTypes,
+									const CSphVector<CSphString> & dJsonKeys, ESphCollation eCollation)
+{
+	if ( eCollation==SPH_COLLATION_UTF8_GENERAL_CI )
+		return new CSphGrouperMulti<Utf8CIHash_fn> ( dLocators, dAttrTypes, dJsonKeys );
+	else if ( eCollation==SPH_COLLATION_LIBC_CI )
+		return new CSphGrouperMulti<LibcCIHash_fn> ( dLocators, dAttrTypes, dJsonKeys );
+	else if ( eCollation==SPH_COLLATION_LIBC_CS )
+		return new CSphGrouperMulti<LibcCSHash_fn> ( dLocators, dAttrTypes, dJsonKeys );
+	else
+		return new CSphGrouperMulti<BinaryHash_fn> ( dLocators, dAttrTypes, dJsonKeys );
+}
+
 
 /////////////////////////
 // SORTING QUEUE FACTORY
 /////////////////////////
 
 template < typename COMP >
-static ISphMatchSorter * CreatePlainSorter ( bool bKbuffer, int iMax, bool bFactors )
+static ISphMatchSorter * CreatePlainSorter ( bool bKbuffer, int iMaxMatches, bool bUsesAttrs, bool bFactors )
 {
 	if ( bKbuffer )
 	{
@@ -3590,15 +3765,16 @@ static ISphMatchSorter * CreatePlainSorter ( bool bKbuffer, int iMax, bool bFact
 			return new CSphMatchQueue<COMP, true> ( iMaxMatches, bUsesAttrs );
 		else
 			return new CSphMatchQueue<COMP, false> ( iMaxMatches, bUsesAttrs );
-	}axMatches, bUsesAttrs );
+	}
 }
 
 
-static ISphMatchSorter * CreatePlainSorter ( ESphSortFunc eMatchFunc, bool bKbuffer, int iMax, bool bFactoaxMatches, bool bUsesAttrs )
+static ISphMatchSorter * CreatePlainSorter ( ESphSortFunc eMatchFunc, bool bKbuffer, int iMaxMatches, bool bUsesAttrs, bool bFactors )
 {
 	switch ( eMatchFunc )
 	{
-		case FUNC_REL_DESC:		return CreatePlainSorter<MatchRelevanceLt_fn>	( bKbuffer,, bFactor, iMaxMatches, bUsesAttrs )R_DESC:	return CreatePlainSorter<MatchAttrLt_fn>		( bKbuffer, iMaxMatches, bUsesAttrs, bFactors ); break;
+		case FUNC_REL_DESC:		return CreatePlainSorter<MatchRelevanceLt_fn>	( bKbuffer, iMaxMatches, bUsesAttrs, bFactors ); break;
+		case FUNC_ATTR_DESC:	return CreatePlainSorter<MatchAttrLt_fn>		( bKbuffer, iMaxMatches, bUsesAttrs, bFactors ); break;
 		case FUNC_ATTR_ASC:		return CreatePlainSorter<MatchAttrGt_fn>		( bKbuffer, iMaxMatches, bUsesAttrs, bFactors ); break;
 		case FUNC_TIMESEGS:		return CreatePlainSorter<MatchTimeSegments_fn>	( bKbuffer, iMaxMatches, bUsesAttrs, bFactors ); break;
 		case FUNC_GENERIC2:		return CreatePlainSorter<MatchGeneric2_fn>		( bKbuffer, iMaxMatches, bUsesAttrs, bFactors ); break;
