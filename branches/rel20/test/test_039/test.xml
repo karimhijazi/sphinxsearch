@@ -155,7 +155,7 @@ $query = create_function ( '&$results, $q, $sock,$vars', '
 	}
 	else if ($res===false)
 	{
-		$results[] = "error:" . @mysql_errno ( $sock ) . " : " . @mysql_error ( $sock );
+		$results[] = "failed";
 	}
 	else
 	{
