@@ -12323,6 +12323,11 @@ void HandleClientMySQL ( int iSock, const char * sClientIP, ThdDesc_t * pThd )
 			} while ( iAddonLen==MAX_PACKET_LEN );
 			if ( iAddonLen<0 )
 				break;
+			if ( iPacketLen<0 || iPacketLen>g_iMaxPacketSize )
+			{
+				sphWarning ( "ill-formed client request (length=%d out of bounds)", iPacketLen );
+				break;
+			}
 		}
 
 		// handle auth packet
@@ -12365,7 +12370,7 @@ void HandleClientMySQL ( int iSock, const char * sClientIP, ThdDesc_t * pThd )
 		// handle query packet
 		assert ( uMysqlCmd==MYSQL_COM_QUERY );
 		sQuery = tIn.GetRawString ( iPacketLen-1 );
-
+		assert ( !tIn.GetError() );
 		tSession.Execute ( sQuery, tOut, uPacketID, pThd );
 	} // for (;;)
 
@@ -15965,7 +15970,7 @@ int WINAPI ServiceMain ( int argc, char **argv )
 	///////////
 
 	if ( g_eWorkers==MPM_THREADS )
-		sphRTInit( hSearchd, bTestMode );
+		sphRTInit ( hSearchd, bTestMode );
 
 	if ( !strcmp ( hSearchd.GetStr ( "query_log_format", "plain" ), "sphinxql" ) )
 		g_eLogFormat = LOG_FORMAT_SPHINXQL;
