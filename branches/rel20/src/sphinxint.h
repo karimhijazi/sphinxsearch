@@ -1251,6 +1251,7 @@ void			sphTransformExtendedQuery ( XQNode_t ** ppNode );
 
 void			sphSetUnlinkOld ( bool bUnlink );
 void			sphUnlinkIndex ( const char * sName, bool bForce );
+void			sphSetDebugCheck ();
 
 void			WriteSchema ( CSphWriter & fdInfo, const CSphSchema & tSchema );
 void			ReadSchema ( CSphReader & rdInfo, CSphSchema & m_tSchema, DWORD uVersion, bool bDynamic );

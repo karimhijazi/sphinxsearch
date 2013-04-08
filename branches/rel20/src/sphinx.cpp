@@ -163,7 +163,8 @@ static const int	DEFAULT_READ_UNHINTED	= 32768;
 static const int	MIN_READ_BUFFER			= 8192;
 static const int	MIN_READ_UNHINTED		= 1024;
 
-static bool					g_bSphQuiet					= false;
+static bool			g_bSphQuiet					= false;
+static bool			g_bDebugCheck				= false;
 
 static int					g_iReadBuffer				= DEFAULT_READ_BUFFER;
 static int					g_iReadUnhinted				= DEFAULT_READ_UNHINTED;
@@ -13883,7 +13884,7 @@ bool CSphIndex_VLN::Preread ()
 	}
 
 	// build attributes hash
-	if ( m_pDocinfo.GetLength() && m_pDocinfoHash.GetLength() )
+	if ( m_pDocinfo.GetLength() && m_pDocinfoHash.GetLength() && !g_bDebugCheck )
 	{
 		sphLogDebug ( "Hashing docinfo" );
 		int iStride = DOCINFO_IDSIZE + m_tSchema.GetRowSize();
@@ -24347,6 +24348,12 @@ void CSphDocMVA::Write ( CSphWriter & tWriter )
 void sphSetQuiet ( bool bQuiet )
 {
 	g_bSphQuiet = bQuiet;
+}
+
+
+void sphSetDebugCheck ()
+{
+	g_bDebugCheck = true;
 }
 
 

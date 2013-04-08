@@ -115,7 +115,7 @@ int main ( int argc, char ** argv )
 		OPT1 ( "--dumpheader" )		{ eCommand = CMD_DUMPHEADER; sDumpHeader = argv[++i]; }
 		OPT1 ( "--dumpconfig" )		{ eCommand = CMD_DUMPCONFIG; sDumpHeader = argv[++i]; }
 		OPT1 ( "--dumpdocids" )		{ eCommand = CMD_DUMPDOCIDS; sIndex = argv[++i]; }
-		OPT1 ( "--check" )			{ eCommand = CMD_CHECK; sIndex = argv[++i]; }
+		OPT1 ( "--check" )			{ eCommand = CMD_CHECK; sIndex = argv[++i]; sphSetDebugCheck(); }
 		OPT1 ( "--htmlstrip" )		{ eCommand = CMD_STRIP; sIndex = argv[++i]; }
 		OPT1 ( "--strip-path" )		{ bStripPath = true; }
 		OPT1 ( "--optimize-rt-klists" )
