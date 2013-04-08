@@ -1572,7 +1572,11 @@ bool ExcerptGen_c::HighlightBestPassages ( const ExcerptQuery_t & tQuery )
 		{
 			// there might be just enough space to partially display this passage
 			if ( ( iTotalCodes + iKeywordsLength )<=tQuery.m_iLimit )
+			{
 				dShow.Add ( tBest );
+				iTotalWords += tBest.m_iWords;
+				iTotalCodes += tBest.m_iCodes;
+			}
 			break;
 		}
 
