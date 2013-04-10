@@ -3324,16 +3324,18 @@ CSphIndex * RtIndex_t::LoadDiskChunk ( int iChunk )
 {
 	MEMORY ( SPH_MEM_IDX_DISK );
 
-	CSphString sChunk, sError, sWarning;
+	CSphString sChunk, sError, sWarning, sName;
 	sChunk.SetSprintf ( "%s.%d", m_sPath.cstr(), iChunk );
+	sName.SetSprintf ( "%s_%d", m_sIndexName.cstr(), iChunk );
 
 	// !COMMIT handle errors gracefully instead of dying
-	CSphIndex * pDiskChunk = sphCreateIndexPhrase ( m_sIndexName.cstr(), sChunk.cstr() );
+	CSphIndex * pDiskChunk = sphCreateIndexPhrase ( sName.cstr(), sChunk.cstr() );
 	if ( !pDiskChunk )
 		sphDie ( "disk chunk %s: alloc failed", sChunk.cstr() );
 
 	pDiskChunk->SetWordlistPreload ( m_bPreloadWordlist );
 	pDiskChunk->m_iExpansionLimit = m_iExpansionLimit;
+	pDiskChunk->SetBinlog ( false );
 
 	if ( !pDiskChunk->Prealloc ( false, m_bPathStripped, sWarning ) )
 		sphDie ( "disk chunk %s: prealloc failed: %s", sChunk.cstr(), pDiskChunk->GetLastError().cstr() );
@@ -5205,6 +5207,10 @@ bool RtIndex_t::AttachDiskIndex ( CSphIndex * pIndex, CSphString & sError )
 	m_pTokenizer = pIndex->GetTokenizer()->Clone ( false );
 	m_pDict = pIndex->GetDictionary()->Clone ();
 	PostSetup();
+	CSphString sName;
+	sName.SetSprintf ( "%s_%d", m_sIndexName.cstr(), m_pDiskChunks.GetLength() );
+	pIndex->SetName ( sName.cstr() );
+	pIndex->SetBinlog ( false );
 
 	// FIXME? what about copying m_TID etc?
 

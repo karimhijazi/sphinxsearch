@@ -7351,6 +7351,7 @@ CSphIndex::CSphIndex ( const char * sIndexName, const char * sFilename )
 	, m_fWriteFactor ( 0.0f )
 	, m_bKeepFilesOpen ( false )
 	, m_bPreloadWordlist ( true )
+	, m_bBinlog ( true )
 	, m_bStripperInited ( true )
 	, m_bEnableStar ( false )
 	, m_bId32to64 ( false )
@@ -7515,7 +7516,7 @@ int CSphIndex_VLN::UpdateAttributes ( const CSphAttrUpdate & tUpd, int iIndex, C
 	if ( !m_uDocinfo || !uRows )
 		return 0;
 
-	if ( g_pBinlog )
+	if ( m_bBinlog && g_pBinlog )
 		g_pBinlog->BinlogUpdateAttributes ( &m_iTID, m_sIndexName.cstr(), tUpd );
 
 	// remap update schema to index schema
@@ -8132,7 +8133,7 @@ bool CSphIndex_VLN::SaveAttributes ()
 	if ( !JuggleFile("spa") )
 		return false;
 
-	if ( g_pBinlog )
+	if ( m_bBinlog && g_pBinlog )
 		g_pBinlog->NotifyIndexFlush ( m_sIndexName.cstr(), m_iTID, false );
 
 	if ( *m_pAttrsStatus==uAttrStatus )

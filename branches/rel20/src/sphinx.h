@@ -2647,6 +2647,7 @@ public:
 	virtual int					GetKillListSize () const = 0;
 	virtual bool				HasDocid ( SphDocID_t uDocid ) const = 0;
 	virtual bool				IsRT() const { return false; }
+	void						SetBinlog ( bool bBinlog ) { m_bBinlog = bBinlog; }
 
 	virtual void				SetEnableStar ( bool bEnableStar ) { m_bEnableStar = bEnableStar; }
 	bool						IsStarEnabled () const { return m_bEnableStar; }
@@ -2746,6 +2747,7 @@ protected:
 
 	bool						m_bKeepFilesOpen;		///< keep files open to avoid race on seamless rotation
 	bool						m_bPreloadWordlist;		///< preload wordlists or keep them on disk
+	bool						m_bBinlog;
 
 	bool						m_bStripperInited;		///< was stripper initialized (old index version (<9) handling)
 	bool						m_bEnableStar;			///< enable star-syntax
