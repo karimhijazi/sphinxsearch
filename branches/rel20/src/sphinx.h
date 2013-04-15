@@ -541,7 +541,7 @@ public:
 	virtual bool					WasTokenSpecial () { return m_bWasSpecial; }
 
 	/// get amount of overshort keywords skipped before this token
-	virtual int						GetOvershortCount () { return m_iOvershortCount; }
+	virtual int						GetOvershortCount () { return ( !m_bBlended && m_bBlendedPart ? 0 : m_iOvershortCount ); }
 
 	/// get original tokenized multiform (if any); NULL means there was none
 	virtual BYTE *					GetTokenizedMultiform () { return NULL; }
