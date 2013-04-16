@@ -5219,6 +5219,8 @@ int SelectParser_t::GetToken ( YYSTYPE * lvalp )
 		LOC_CHECK ( "OR", 2, TOK_OR );
 		LOC_CHECK ( "AND", 3, TOK_AND );
 		LOC_CHECK ( "NOT", 3, TOK_NOT );
+		LOC_CHECK ( "DIV", 3, TOK_DIV );
+		LOC_CHECK ( "MOD", 3, TOK_MOD );
 		LOC_CHECK ( "AVG", 3, SEL_AVG );
 		LOC_CHECK ( "MIN", 3, SEL_MIN );
 		LOC_CHECK ( "MAX", 3, SEL_MAX );
