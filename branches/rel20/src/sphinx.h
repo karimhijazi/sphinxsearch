@@ -540,6 +540,8 @@ public:
 	/// was last token a special one?
 	virtual bool					WasTokenSpecial () { return m_bWasSpecial; }
 
+	virtual bool					WasTokenSynonym () const { return m_bWasSynonym; }
+
 	/// get amount of overshort keywords skipped before this token
 	virtual int						GetOvershortCount () { return ( !m_bBlended && m_bBlendedPart ? 0 : m_iOvershortCount ); }
 
@@ -593,6 +595,7 @@ protected:
 	bool							m_bBoundary;				///< boundary flag (true immediately after boundary codepoint)
 	int								m_iBoundaryOffset;			///< boundary character offset (in bytes)
 	bool							m_bWasSpecial;				///< special token flag
+	bool							m_bWasSynonym;				///< last token is a synonym token
 	bool							m_bEscaped;					///< backslash handling flag
 	int								m_iOvershortCount;			///< skipped overshort tokens count
 

@@ -2852,6 +2852,7 @@ ISphTokenizer::ISphTokenizer ()
 	, m_bTokenBoundary ( false )
 	, m_bBoundary ( false )
 	, m_bWasSpecial ( false )
+	, m_bWasSynonym ( false )
 	, m_bEscaped ( false )
 	, m_iOvershortCount ( 0 )
 	, m_bBlended ( false )
@@ -3816,6 +3817,7 @@ BYTE * CSphTokenizerTraits<IS_UTF8>::GetTokenSyn ()
 	assert ( m_dSynonyms.GetLength() );
 
 	bool bEscaped = m_bEscaped;
+	m_bWasSynonym = false;
 	BYTE * pCur;
 
 	m_bTokenBoundary = false;
@@ -3967,6 +3969,7 @@ BYTE * CSphTokenizerTraits<IS_UTF8>::GetTokenSyn ()
 				if ( bJustSpecial || ( iFolded & FLAG_CODEPOINT_SPECIAL )!=0 ) m_pCur = pCur; \
 				strncpy ( (char*)m_sAccum, m_dSynonyms[_idx].m_sTo.cstr(), sizeof(m_sAccum) ); \
 				m_iLastTokenLen = m_dSynonyms[_idx].m_iToLen; \
+				m_bWasSynonym = true; \
 				return m_sAccum; \
 			}
 
