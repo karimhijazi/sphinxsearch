@@ -1809,15 +1809,15 @@ public:
 
 			if ( m_iGLimit==1 )
 			{
-				if ( NOTIFICATIONS )
-				{
-					m_iJustPushed = tEntry.m_iDocID;
-					m_dJustPopped.Add ( pMatch->m_iDocID );
-				}
-
 				// if new entry is more relevant, update from it
 				if ( m_pComp->VirtualIsLess ( *pMatch, tEntry, m_tState ) )
 				{
+					if ( NOTIFICATIONS )
+					{
+						m_iJustPushed = tEntry.m_iDocID;
+						m_dJustPopped.Add ( pMatch->m_iDocID );
+					}
+
 					// clone the low part of the match
 					m_tSchema.CloneMatch ( pMatch, tEntry, m_iPregroupDynamic );
 				}
@@ -3854,7 +3854,7 @@ static unsigned short g_dCollWeights_UTF8CI[0xb00] =
 	32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47,
 	48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63,
 	64, 65, 66, 67, 68, 69, 70, 71, 72, 73, 74, 75, 76, 77, 78, 79,
-	80, 81, 82, 83, 90, 91, 92, 93, 94, 95,
+	80, 81, 82, 89, 90, 91, 92, 93, 94, 95,
 	96, 65, 66, 67, 68, 69, 70, 71, 72, 73, 74, 75, 76, 77, 78, 79,
 	80, 81, 82, 83, 84, 85, 86, 87, 88, 89, 90, 123, 124, 125, 126, 127,
 	128, 129, 130, 131, 132, 133, 134, 135, 136, 137, 138, 139, 140, 141, 142, 143,
