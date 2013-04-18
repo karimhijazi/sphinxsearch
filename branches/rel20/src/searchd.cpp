@@ -1233,7 +1233,7 @@ public:
 
 	const StringBuffer_c & operator += ( const char * s )
 	{
-		Append ( s, false );
+		Append ( "%s", s );
 		return *this;
 	}
 
@@ -1359,10 +1359,10 @@ public:
 				sSpan += m_dLog[j].m_sIndex.cstr();
 			}
 			sSpan += ": ";
-			sSpan.Append ( m_dLog[iSpanStart].m_sError.cstr(), true );
+			sSpan.Append ( "%s", m_dLog[iSpanStart].m_sError.cstr() );
 
 			// flush current span
-			sReport.Append ( sSpan.cstr(), true );
+			sReport.Append ( "%s", sSpan.cstr() );
 
 			// done
 			iSpanStart = i;
