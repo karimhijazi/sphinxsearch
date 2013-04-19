@@ -955,7 +955,7 @@ inline int sphUTF8Encode ( BYTE * pBuf, int iCode )
 		pBuf[1] = (BYTE)( ( iCode & 0x3F ) | 0x80 );
 		return 2;
 
-	} else if ( iCode<0x8000 )
+	} else if ( iCode<0x10000 )
 	{
 		pBuf[0] = (BYTE)( ( (iCode>>12) & 0x0F ) | 0xE0 );
 		pBuf[1] = (BYTE)( ( (iCode>>6) & 0x3F ) | 0x80 );
