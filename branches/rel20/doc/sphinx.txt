@@ -1,4 +1,4 @@
-Sphinx 2.0.7-release reference manual
+Sphinx 2.0.8-release reference manual
 =====================================
 
 Free open-source SQL full-text search engine
@@ -340,24 +340,25 @@ Table of Contents
       11.4.42. prefork_rotation_throttle
 
 A. Sphinx revision history
-   A.1. Version 2.0.7-release, 26 mar 2013
-   A.2. Version 2.0.6-release, 22 oct 2012
-   A.3. Version 2.0.5-release, 28 jul 2012
-   A.4. Version 2.0.4-release, 02 mar 2012
-   A.5. Version 2.0.3-release, 23 dec 2011
-   A.6. Version 2.0.2-beta, 15 nov 2011
-   A.7. Version 2.0.1-beta, 22 apr 2011
-   A.8. Version 1.10-beta, 19 jul 2010
-   A.9. Version 0.9.9-release, 02 dec 2009
-   A.10. Version 0.9.9-rc2, 08 apr 2009
-   A.11. Version 0.9.9-rc1, 17 nov 2008
-   A.12. Version 0.9.8.1, 30 oct 2008
-   A.13. Version 0.9.8, 14 jul 2008
-   A.14. Version 0.9.7, 02 apr 2007
-   A.15. Version 0.9.7-rc2, 15 dec 2006
-   A.16. Version 0.9.7-rc1, 26 oct 2006
-   A.17. Version 0.9.6, 24 jul 2006
-   A.18. Version 0.9.6-rc1, 26 jun 2006
+   A.1. Version 2.0.8-release, 26 apr 2013
+   A.2. Version 2.0.7-release, 26 mar 2013
+   A.3. Version 2.0.6-release, 22 oct 2012
+   A.4. Version 2.0.5-release, 28 jul 2012
+   A.5. Version 2.0.4-release, 02 mar 2012
+   A.6. Version 2.0.3-release, 23 dec 2011
+   A.7. Version 2.0.2-beta, 15 nov 2011
+   A.8. Version 2.0.1-beta, 22 apr 2011
+   A.9. Version 1.10-beta, 19 jul 2010
+   A.10. Version 0.9.9-release, 02 dec 2009
+   A.11. Version 0.9.9-rc2, 08 apr 2009
+   A.12. Version 0.9.9-rc1, 17 nov 2008
+   A.13. Version 0.9.8.1, 30 oct 2008
+   A.14. Version 0.9.8, 14 jul 2008
+   A.15. Version 0.9.7, 02 apr 2007
+   A.16. Version 0.9.7-rc2, 15 dec 2006
+   A.17. Version 0.9.7-rc1, 26 oct 2006
+   A.18. Version 0.9.6, 24 jul 2006
+   A.19. Version 0.9.6-rc1, 26 jun 2006
 
 List of Examples
 
@@ -2222,13 +2223,13 @@ and then adds bm25 to that per-field sum. Currently implemented field-level
 factors are:
 
    * lcs (integer), the length of a maximum verbatim match between the
-     document and the query, coutned in words. LCS stands for Longest
+     document and the query, counted in words. LCS stands for Longest
      Common Subsequence (or Subset). Takes a minimum value of 1 when only
      stray keywords were matched in a field, and a maximum value of query
      keywords count when the entire query was matched in a field verbatim
      (in the exact query keywords order). For example, if the query is
      'hello world' and the field contains these two words quoted from the
-     query (that is, adjacent to each other, and exaclty in the query
+     query (that is, adjacent to each other, and exactly in the query
      order), lcs will be 2. For example, if the query is 'hello world
      program' and the field contains 'hello world', lcs will be 2. Note
      that any subset of the query keyword works, not just a subset of
@@ -2237,7 +2238,7 @@ factors are:
      well, because both 'hello' and 'program' matched in the same
      respective positions as they were in the query. Finally, if the query
      is 'hello world program' and the field contains 'hello world program',
-     lcs will be 3. (Hopefully that is unsurpising at this point.)
+     lcs will be 3. (Hopefully that is unsurprising at this point.)
    * user_weight (integer), the user specified per-field weight (refer to
      SetFieldWeights() in SphinxAPI and OPTION field_weights in SphinxQL
      respectively). The weights default to 1 if not specified explicitly.
@@ -10065,26 +10066,59 @@ Appendix A. Sphinx revision history
 
 Table of Contents
 
-A.1. Version 2.0.7-release, 26 mar 2013
-A.2. Version 2.0.6-release, 22 oct 2012
-A.3. Version 2.0.5-release, 28 jul 2012
-A.4. Version 2.0.4-release, 02 mar 2012
-A.5. Version 2.0.3-release, 23 dec 2011
-A.6. Version 2.0.2-beta, 15 nov 2011
-A.7. Version 2.0.1-beta, 22 apr 2011
-A.8. Version 1.10-beta, 19 jul 2010
-A.9. Version 0.9.9-release, 02 dec 2009
-A.10. Version 0.9.9-rc2, 08 apr 2009
-A.11. Version 0.9.9-rc1, 17 nov 2008
-A.12. Version 0.9.8.1, 30 oct 2008
-A.13. Version 0.9.8, 14 jul 2008
-A.14. Version 0.9.7, 02 apr 2007
-A.15. Version 0.9.7-rc2, 15 dec 2006
-A.16. Version 0.9.7-rc1, 26 oct 2006
-A.17. Version 0.9.6, 24 jul 2006
-A.18. Version 0.9.6-rc1, 26 jun 2006
+A.1. Version 2.0.8-release, 26 apr 2013
+A.2. Version 2.0.7-release, 26 mar 2013
+A.3. Version 2.0.6-release, 22 oct 2012
+A.4. Version 2.0.5-release, 28 jul 2012
+A.5. Version 2.0.4-release, 02 mar 2012
+A.6. Version 2.0.3-release, 23 dec 2011
+A.7. Version 2.0.2-beta, 15 nov 2011
+A.8. Version 2.0.1-beta, 22 apr 2011
+A.9. Version 1.10-beta, 19 jul 2010
+A.10. Version 0.9.9-release, 02 dec 2009
+A.11. Version 0.9.9-rc2, 08 apr 2009
+A.12. Version 0.9.9-rc1, 17 nov 2008
+A.13. Version 0.9.8.1, 30 oct 2008
+A.14. Version 0.9.8, 14 jul 2008
+A.15. Version 0.9.7, 02 apr 2007
+A.16. Version 0.9.7-rc2, 15 dec 2006
+A.17. Version 0.9.7-rc1, 26 oct 2006
+A.18. Version 0.9.6, 24 jul 2006
+A.19. Version 0.9.6-rc1, 26 jun 2006
 
-A.1. Version 2.0.7-release, 26 mar 2013
+A.1. Version 2.0.8-release, 26 apr 2013
+=======================================
+
+Bug fixes
+---------
+
+   * fixed #1515, log strings over 2KB were clipped when
+     query_log_format=plain
+   * fixed #1514, RT index disk chunk lose attribute update on daemon
+     restart
+   * fixed #1512, crash while formatting log messages
+   * fixed #1511, crash on indexing PostgreSQL data source with MVA
+     attributes
+   * fixed #1509, blend_chars vs incomplete multi-form and overshort
+   * fixed #1504, RT binlog replay vs descending tid on update
+   * fixed #1499, sql_field_str2wordcount actually is int, not string
+   * fixed #1498, now working with exceptions starting with number too
+   * fixed #1496, multiple destination keywords in wordform
+   * fixed #1494, lost 'mod', '%' operations in select list. Also corrected
+     few typers in the doc.
+   * fixed #1490, expand_keywords vs prefix
+   * fixed #1487, `id` in expression fixed
+   * fixed #1483, snippets limits fix
+   * fixed #1481, shebang config changes check on rotation
+   * fixed #1479, port handling in PHP Sphinx API
+   * fixed #1474, daemon crash at SphinxQL packet overflows max_packet_size
+   * fixed #1472, crash on loading index to indextool for check
+   * fixed #1472, broken indextool --check
+   * fixed #1465, expansion_limit got lost in index rotation
+   * fixed #1427, #1506, utf8 3 and 4-bytes codepoints
+   * fixed #1405, between with mixed int float values
+
+A.2. Version 2.0.7-release, 26 mar 2013
 =======================================
 
 Bug fixes
@@ -10169,7 +10203,7 @@ Bug fixes
    * added a console message about crashes during index loading at startup
    * added more debug info about failed index loading
 
-A.2. Version 2.0.6-release, 22 oct 2012
+A.3. Version 2.0.6-release, 22 oct 2012
 =======================================
 
 Bug fixes
@@ -10240,7 +10274,7 @@ Bug fixes
    * fixed sample config file
    * fixed x64 configurations for libstemmer
 
-A.3. Version 2.0.5-release, 28 jul 2012
+A.4. Version 2.0.5-release, 28 jul 2012
 =======================================
 
 Bug fixes
@@ -10347,7 +10381,7 @@ Bug fixes
      parser
    * fixed missing command-line switches documentation
 
-A.4. Version 2.0.4-release, 02 mar 2012
+A.5. Version 2.0.4-release, 02 mar 2012
 =======================================
 
 Bug fixes
@@ -10402,7 +10436,7 @@ Bug fixes
    * fixed #1120, negative total_found, docs and hits counter on huge
      indexes
 
-A.5. Version 2.0.3-release, 23 dec 2011
+A.6. Version 2.0.3-release, 23 dec 2011
 =======================================
 
 Bug fixes
@@ -10432,7 +10466,7 @@ Bug fixes
    * fixed build of SphinxSE with MySQL 5.1
    * fixed crash log for 'fork' and 'prefork' workers
 
-A.6. Version 2.0.2-beta, 15 nov 2011
+A.7. Version 2.0.2-beta, 15 nov 2011
 ====================================
 
 Major new features
@@ -10603,7 +10637,7 @@ Bug fixes
    * fixed that field/zone conditions were not propagated to expanded
      keywords with dict=keywords
 
-A.7. Version 2.0.1-beta, 22 apr 2011
+A.8. Version 2.0.1-beta, 22 apr 2011
 ====================================
 
 New general features
@@ -10780,7 +10814,7 @@ Bug fixes
    * fixed libsphinxclient SIGPIPE handling
    * fixed libsphinxclient vs VS2003 compiler bug
 
-A.8. Version 1.10-beta, 19 jul 2010
+A.9. Version 1.10-beta, 19 jul 2010
 ===================================
 
    * added RT indexes support (Chapter 4, Real-time indexes)
@@ -10869,8 +10903,8 @@ A.8. Version 1.10-beta, 19 jul 2010
      etc)
    * fixed #509, indexing ranged results from stored procedures
 
-A.9. Version 0.9.9-release, 02 dec 2009
-=======================================
+A.10. Version 0.9.9-release, 02 dec 2009
+========================================
 
    * added Open, Close, Status calls to libsphinxclient (C API)
    * added automatic persistent connection reopening to PHP, Python APIs
@@ -10932,7 +10966,7 @@ A.9. Version 0.9.9-release, 02 dec 2009
    * fixed #344 (invalid checkpoints after merge)
    * fixed #326 (missing CLOCK_xxx on FreeBSD)
 
-A.10. Version 0.9.9-rc2, 08 apr 2009
+A.11. Version 0.9.9-rc2, 08 apr 2009
 ====================================
 
    * added IsConnectError(), Open(), Close() calls to Java API (bug #240)
@@ -11031,7 +11065,7 @@ A.10. Version 0.9.9-rc2, 08 apr 2009
      static
    * fixed parser vs @field -keyword, foo|@field bar, "" queries (bug #310)
 
-A.11. Version 0.9.9-rc1, 17 nov 2008
+A.12. Version 0.9.9-rc1, 17 nov 2008
 ====================================
 
    * added min_stemming_len directive
@@ -11094,7 +11128,7 @@ A.11. Version 0.9.9-rc1, 17 nov 2008
    * fixed backslash escaping, added backslash to EscapeString()
    * fixed handling of over-2GB dictionary files (.spi)
 
-A.12. Version 0.9.8.1, 30 oct 2008
+A.13. Version 0.9.8.1, 30 oct 2008
 ==================================
 
    * added configure script to libsphinxclient
@@ -11131,7 +11165,7 @@ A.12. Version 0.9.8.1, 30 oct 2008
    * fixed default ID range (that filtered out all 64-bit values) in Java
      and Python APIs
 
-A.13. Version 0.9.8, 14 jul 2008
+A.14. Version 0.9.8, 14 jul 2008
 ================================
 
 Indexing
@@ -11311,7 +11345,7 @@ Changes and fixes since 0.9.8-rc2
      reusable sorter issue
    * fixed sorting of negative floats in SPH_SORT_EXTENDED mode
 
-A.14. Version 0.9.7, 02 apr 2007
+A.15. Version 0.9.7, 02 apr 2007
 ================================
 
    * added support for sql_str2ordinal_column
@@ -11361,7 +11395,7 @@ A.14. Version 0.9.7, 02 apr 2007
    * fixed wrong assertion in SBCS encoder
    * fixed crashes with no-attribute indexes after rotate
 
-A.15. Version 0.9.7-rc2, 15 dec 2006
+A.16. Version 0.9.7-rc2, 15 dec 2006
 ====================================
 
    * added support for extended matching mode (query language)
@@ -11383,7 +11417,7 @@ A.15. Version 0.9.7-rc2, 15 dec 2006
      paths)
    * fixes for 64-bit platforms
 
-A.16. Version 0.9.7-rc1, 26 oct 2006
+A.17. Version 0.9.7-rc1, 26 oct 2006
 ====================================
 
    * added alpha index merging code
@@ -11412,7 +11446,7 @@ A.16. Version 0.9.7-rc1, 26 oct 2006
    * fixed line numbering in config parser
    * fixed some issues with index rotation
 
-A.17. Version 0.9.6, 24 jul 2006
+A.18. Version 0.9.6, 24 jul 2006
 ================================
 
    * added support for empty indexes
@@ -11421,7 +11455,7 @@ A.17. Version 0.9.6, 24 jul 2006
    * fixed configure issues with --without-mysql and --with-pgsql options
    * fixed building on Solaris 9
 
-A.18. Version 0.9.6-rc1, 26 jun 2006
+A.19. Version 0.9.6-rc1, 26 jun 2006
 ====================================
 
    * added boolean queries support (experimental, beta version)
