@@ -11286,7 +11286,6 @@ prefork_rotation_throttle = 50 # throttle children restarts by 50 msec each
 <listitem><para>fixed #1479, port handling in <link linkend="api-reference">PHP Sphinx API</link></para></listitem>
 <listitem><para>fixed #1474, daemon crash at SphinxQL packet overflows <link linkend="conf-max-packet-size">max_packet_size</link></para></listitem>
 <listitem><para>fixed #1472, crash on loading index to <filename>indextool</filename> for check</para></listitem>
-<listitem><para>fixed #1472, broken <filename>indextool --check</filename></para></listitem>
 <listitem><para>fixed #1465, <link linkend="conf-expansion-limit">expansion_limit</link> got lost in index rotation</para></listitem>
 <listitem><para>fixed #1427, #1506, utf8 3 and 4-bytes codepoints</para></listitem>
 <listitem><para>fixed #1405, between with mixed int float values</para></listitem>

@@ -10113,7 +10113,6 @@ Bug fixes
    * fixed #1479, port handling in PHP Sphinx API
    * fixed #1474, daemon crash at SphinxQL packet overflows max_packet_size
    * fixed #1472, crash on loading index to indextool for check
-   * fixed #1472, broken indextool --check
    * fixed #1465, expansion_limit got lost in index rotation
    * fixed #1427, #1506, utf8 3 and 4-bytes codepoints
    * fixed #1405, between with mixed int float values
