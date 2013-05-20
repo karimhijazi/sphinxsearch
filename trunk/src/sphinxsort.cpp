@@ -104,7 +104,6 @@ public:
 public:
 	void		SetState ( const CSphMatchComparatorState & tState )	{ m_tState = tState; m_tState.m_iNow = (DWORD) time ( NULL ); }
 	bool		UsesAttrs () const										{ return m_bUsesAttrs; }
-	virtual CSphMatch *	Finalize ()												{ return m_pData; }
 	virtual int			GetLength () const										{ return m_iUsed; }
 	virtual int			GetDataLength () const									{ return m_iDataLength; }
 
@@ -272,12 +271,35 @@ public:
 		m_iTotal = 0;
 	}
 
-	void BuildFlatIndexes ( CSphVector<int> & dIndexes )
+	void Finalize ( ISphMatchProcessor & tProcessor, bool bCallProcessInResultSetOrder )
 	{
-		dIndexes.Resize ( GetLength() );
-		ARRAY_FOREACH ( i, dIndexes )
-			dIndexes[i] = i;
-		dIndexes.Sort ( CompareIndex_fn<COMP> ( m_pData, &m_tState ) );
+		if ( !GetLength() )
+			return;
+
+		if ( !bCallProcessInResultSetOrder )
+		{
+			// just evaluate in heap order
+			CSphMatch * pCur = m_pData;
+			const CSphMatch * pEnd = m_pData + m_iUsed;
+			while ( pCur<pEnd )
+			{
+				tProcessor.Process ( pCur++ );
+			}
+		} else
+		{
+			// means final-stage calls will be evaluated
+			// a) over the final, pre-limit result set
+			// b) in the final result set order
+			CSphFixedVector<int> dIndexes ( GetLength() );
+			ARRAY_FOREACH ( i, dIndexes )
+				dIndexes[i] = i;
+			sphSort ( dIndexes.Begin(), dIndexes.GetLength(), CompareIndex_fn<COMP> ( m_pData, &m_tState ) );
+
+			ARRAY_FOREACH ( i, dIndexes )
+			{
+				tProcessor.Process ( m_pData + dIndexes[i] );
+			}
+		}
 	}
 };
 
@@ -374,8 +396,6 @@ public:
 	/// add entry to the queue
 	virtual bool Push ( const CSphMatch & tEntry )
 	{
-		assert ( !m_bFinalized );
-
 		if ( NOTIFICATIONS )
 		{
 			m_iJustPushed = 0;
@@ -389,6 +409,7 @@ public:
 
 		// quick check passed
 		// fill the data, back to front
+		m_bFinalized = false;
 		m_iUsed++;
 		m_tSchema.CloneMatch ( m_pEnd-m_iUsed, tEntry );
 
@@ -402,6 +423,7 @@ public:
 			MatchSort_fn<COMP> tComp ( m_tState, m_tSchema );
 			sphSort ( m_pEnd-m_iSize, m_iSize, tComp, tComp );
 			m_pWorst = m_pEnd-m_iSize;
+			m_bFinalized = true;
 			return true;
 		}
 
@@ -419,6 +441,7 @@ public:
 
 			m_iUsed = m_iSize;
 			m_pWorst = m_pEnd-m_iSize;
+			m_bFinalized = true;
 		}
 		return true;
 	}
@@ -431,21 +454,26 @@ public:
 	}
 
 	/// finalize, perform final sort/cut as needed
-	virtual CSphMatch *	Finalize ()
+	virtual void Finalize ( ISphMatchProcessor & tProcessor, bool )
 	{
-		if ( m_bFinalized )
-		{
-			assert ( m_iUsed<=m_iSize );
-			return m_pEnd-m_iUsed;
-		}
-		if ( m_iUsed )
+		if ( !GetLength() )
+			return;
+
+		if ( !m_bFinalized )
 		{
 			MatchSort_fn<COMP> tComp ( m_tState, m_tSchema );
 			sphSort ( m_pEnd-m_iUsed, m_iUsed, tComp, tComp );
+			m_iUsed = Min ( m_iUsed, m_iSize );
+			m_bFinalized = true;
 		}
-		m_iUsed = Min ( m_iUsed, m_iSize );
-		m_bFinalized = true;
-		return m_pEnd-m_iUsed;
+
+		// reverse order iteration
+		CSphMatch * pCur = m_pEnd - 1;
+		const CSphMatch * pEnd = m_pEnd - m_iUsed;
+		while ( pCur>=pEnd )
+		{
+			tProcessor.Process ( pCur-- );
+		}
 	}
 
 	/// current result set length
@@ -458,7 +486,11 @@ public:
 	void Flatten ( CSphMatch * pTo, int iTag )
 	{
 		// ensure we are sorted
-		Finalize();
+		if ( m_iUsed )
+		{
+			MatchSort_fn<COMP> tComp ( m_tState, m_tSchema );
+			sphSort ( m_pEnd-m_iUsed, m_iUsed, tComp, tComp );
+		}
 
 		// reverse copy
 		for ( int i=1; i<=Min ( m_iUsed, m_iSize ); i++ )
@@ -563,10 +595,25 @@ public:
 		DoUpdate();
 		m_iTotal = 0;
 	}
+
+	virtual void Finalize ( ISphMatchProcessor & tProcessor, bool )
+	{
+		if ( !GetLength() )
+			return;
+
+		// just evaluate in heap order
+		CSphMatch * pCur = m_pData;
+		const CSphMatch * pEnd = m_pData + m_iUsed;
+		while ( pCur<pEnd )
+		{
+			tProcessor.Process ( pCur++ );
+		}
+	}(4);
+		return false;
+	};
 };
 
-//////////////////////////////////////////////////////////////////////////
-// SORTING+GROUPING QUEUE
+///////////////////////////////////////////////////// SORTING+GROUPING QUEUE
 //////////////////////////////////////////////////////////////////////////
 
 static bool IsCount ( const CSphString & s )
@@ -1424,7 +1471,6 @@ protected:
 	CSphVector<int>	m_dGroupsLen;	///< lengths of chains of equal matches from groups
 	int				m_iHeads;		///< insertion point for head matches.
 	int				m_iTails;		///< where to put tails of the subgroups
-	bool			m_bJustFinalized;
 	SphGroupKey_t	m_uLastGroupKey;	///< helps to determine in pushEx whether the new subgroup started
 #ifndef NDEBUG
 	int				m_iruns;		///< helpers for conditional breakpoints on debug
@@ -1490,7 +1536,6 @@ public:
 		, m_iGLimit ( pQuery->m_iGroupbyLimit )
 		, m_iHeads ( 0 )
 		, m_iTails ( 0 )
-		, m_bJustFinalized ( true )
 		, m_uLastGroupKey ( -1 )
 		, m_bSortByDistinct ( false )
 		, m_pComp ( pComp )
@@ -1729,7 +1774,6 @@ public:
 			m_dGroupByList[iPrev] = iPoint;
 			m_dGroupByList[iPoint] = iPos;
 		}
-		m_bJustFinalized = false;
 		return bDoAdd ? 2 : 1;
 	}
 
@@ -1942,44 +1986,13 @@ public:
 	}
 
 
-	void FlattenSubgroups ( CSphMatch * pTo, int iTag, CSphVector<IAggrFunc *>* pAggrs )
-	{
-		int iLen = GetLength ();
-		CSphMatch * pLastHead = NULL;
-		int iHeads = 0;
-		int iMatch = 0;
-		for ( int i=0; i<iLen; ++i, pTo++ )
-		{
-			CSphMatch * pMatch = m_pData + iMatch;
-			if ( iMatch < m_iSize ) // this is head match
-			{
-				ARRAY_FOREACH ( j, (*pAggrs) )
-					(*pAggrs)[j]->Finalize ( pMatch );
-
-				m_tSchema.CloneMatch ( pTo, *pMatch );
-				if ( iTag>=0 )
-					pTo->m_iTag = iTag;
-				pLastHead=pMatch;
-			} else
-			{
-				assert ( pLastHead );
-				m_tSchema.CombineMatch ( pTo, *pMatch, *pLastHead, m_iPregroupDynamic );
-				if ( iTag>=0 )
-					pTo->m_iTag = iTag;
-			}
-			iMatch = m_dGroupByList[iMatch];
-			if ( iMatch<0 )
-				iMatch = ++iHeads;
-		}
-	}
-
 	/// store all entries into specified location in sorted order, and remove them from queue
 	void Flatten ( CSphMatch * pTo, int iTag )
 	{
 		CountDistinct ();
 		CalcAvg ( true );
 
-		bool bHaveTails = m_bJustFinalized ? false : Hash2nd();
+		Hash2nd();
 
 		SortGroups ();rue );
 		SortGroups ();
@@ -1989,11 +2002,34 @@ public:
 		{
 			dAggrs = m_dAggregates;
 			ARRAY_FOREACH ( i, m_dAvgs )
-				dAggrs.RemoveValue f ( bHaveTails )
-			FlattenSubgroups ( pTo, iTag, &dAggrs );
-		else
+				dAggrs.RemoveValue nt iLen = GetLength ();
+		if ( m_iGLimit>1 )
 		{
-			int iLen = GetLength ();
+			int iLastHead = -1;
+			int iMatch = 0;
+			for ( int i=0; i<iLen; ++i, pTo++ )
+			{
+				CSphMatch * pMatch = m_pData + iMatch;
+				if ( iMatch < m_iSize ) // this is head match
+				{
+					ARRAY_FOREACH ( j, dAggrs )
+						dAggrs[j]->Finalize ( pMatch );
+
+					m_tSchema.CloneMatch ( pTo, *pMatch );
+					iLastHead = iMatch;
+				} else
+				{
+					assert ( iLastHead>=0 && iLastHead<iMatch );
+					m_tSchema.CombineMatch ( pTo, *pMatch, m_pData[iLastHead], m_iPregroupDynamic );
+				}
+				if ( iTag>=0 )
+					pTo->m_iTag = iTag;
+				iMatch = m_dGroupByList[iMatch];
+				if ( iMatch<0 )
+					iMatch = iLastHead+1;
+			}
+		} else
+		{
 			for ( int i=0; i<iLen; i++, pTo++ )
 			{
 				ARRAY_FOREACH ( j, dAggrs )
@@ -2008,7 +2044,7 @@ public:
 		m_iHeads = m_iUsed = 0;
 		m_iTotal = 0;
 
-		if ( m_iGLimit > 1 )
+		if ( m_iGLimit>1 )
 		{
 			memset ( m_pData+m_iSize, 0, m_iSize*sizeof(CSphMatch) );
 			m_iTails = 0;
@@ -2242,45 +2278,36 @@ if ( NOTIFICATIONS )
 		sphSort ( m_pData, m_iHeads, m_tGroupSorter, m_tGroupSorter );
 	}
 
-	CSphMatch * FinalizeSubgroups()
+	virtual void Finalize ( ISphMatchProcessor & tProcessor, bool )
 	{
-		// we have 4 times more allocated space then necessary.
-		// heads placed from m_pData+0. Tails from m_pData+2*m_iLimit.
-		// so, using m_pData+m_iLimit as temporary storage is safe.
-		CSphMatch * pFinal = m_pData + m_iLimit;
-		CSphMatch * pLastHead = NULL;
-		int iHeads = 0;
-		int iMatch = 0;
-		for ( int i=0; i<m_iUsed; ++i )
-		{
-			CSphMatch * pMatch = m_pData + iMatch;
-			memcpy ( pFinal, m_pData+iMatch, sizeof(CSphMatch) );
-			if ( iMatch < m_iSize ) // this is head match
-			{
-				++pFinal;
-				pLastHead=pMatch;
-			} else
-			{
-				assert ( pLastHead );
-				m_tSchema.CombineMatch ( pFinal, *pFinal, *pLastHead, m_iPregroupDynamic );
-				++pFinal;
-			}
-			iMatch = m_dGroupByList[iMatch];
-			if ( iMatch<0 )
-				iMatch = ++iHeads;
-		}
-		memcpy ( m_pData, m_pData+m_iLimit, m_iUsed*sizeof(CSphMatch) );
-		memset ( m_pData+m_iLimit, 0, m_iUsed*sizeof(CSphMatch) );
-		m_bJustFinalized = true;
-		return m_pDataSorter, m_tGroupSorter );
-	}
+		if ( !GetLength() )
+			return;
 
-	virtual CSphMatch * Finalize()
-	{
-		if ( m_iUsed>m_iLLimit );
+		if ( m_iUsed>m_iLimit )
+			CutWorst ( m_iLimit );
 
 		if ( m_iGLimit > 1 )
-			return FinalizeSubgroups(st ( m_iUsed - m_iLimit );
+		{
+			int iMatch = 0;
+			int iNextHead = 0;
+			for ( int i=0; i<m_iUsed; ++i )
+			{
+				tProcessor.Process ( m_pData + iMatch );
+				if ( iMatch < m_iSize ) // this is head match
+					iNextHead = iMatch + 1;
+
+				iMatch = m_dGroupByList[iMatch];
+				if ( iMatch<0 )
+					iMatch = iNextHead;
+			}
+		} else
+		{
+			// just evaluate in heap order
+			CSphMatch * pCur = m_pData;
+			const CSphMatch * pEnd = m_pData + m_iUsed;
+			while ( pCur<pEnd )
+				tProcessor.Process ( pCur++ );
+		}it );
 
 		return m_pData;
 	}
@@ -2549,6 +2576,15 @@ public:
 			m_dUniq.Resize(0);
 	}
 
+	/// finalize, perform final sort/cut as needed
+	void Finalize ( ISphMatchProcessor & tProcessor, bool )
+	{
+		if ( !GetLength() )
+			return;
+
+		tProcessor.Process ( &m_tData );
+	}
+
 	/// get entries count
 	int GetLength () const
 	{
@@ -2654,10 +2690,7 @@ protected:
 			m_tData.SetAttr ( m_tLocDistinct, iCount );
 		}
 	}
-
-	virtual CSphMatch * Finalize()
-	{
-		return &m_tData>m_tLocGroupby ), true );
+ocGroupby ), true );
 	}
 };
 
@@ -3845,7 +3878,7 @@ int CollateLibcCS ( const BYTE * p, bool bPacked )
 /// 1st level LUT
 static unsigned short * g_dCollPlanes_UTF8CI[0x100];
 
-/// 2nd level LUT, non-trivial collation data
+/// 2n collation data
 static unsigned short g_dCollWeights_UTF8CI[0xb00] =
 {
 	// weights for 0x0 to 0x5ff
@@ -3854,7 +3887,7 @@ static unsigned short g_dCollWeights_UTF8CI[0xb00] =
 	32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47,
 	48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63,
 	64, 65, 66, 67, 68, 69, 70, 71, 72, 73, 74, 75, 76, 77, 78, 79,
-	80, 81, 82, 89, 90, 91, 92, 93, 94, 95,
+	80, 81, 82, 83, 84, 85, 86, 87, 88, 89, 90, 91, 92, 93, 94, 95,
 	96, 65, 66, 67, 68, 69, 70, 71, 72, 73, 74, 75, 76, 77, 78, 79,
 	80, 81, 82, 83, 84, 85, 86, 87, 88, 89, 90, 123, 124, 125, 126, 127,
 	128, 129, 130, 131, 132, 133, 134, 135, 136, 137, 138, 139, 140, 141, 142, 143,
