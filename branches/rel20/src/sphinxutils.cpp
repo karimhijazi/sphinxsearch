@@ -486,12 +486,11 @@ bool TryToExec ( char * pBuffer, char * pEnd, const char * szFilename, CSphVecto
 
 		exit ( 1 );
 
-	} else
-		if ( iChild==-1 )
-		{
-			snprintf ( sError, iErrorLen, "fork failed: [%d] %s", errno, strerror(errno) );
-			return false;
-		}
+	} else if ( iChild==-1 )
+	{
+		snprintf ( sError, iErrorLen, "fork failed: [%d] %s", errno, strerror(errno) );
+		return false;
+	}
 
 	close ( iWrite );
 
@@ -513,6 +512,7 @@ bool TryToExec ( char * pBuffer, char * pEnd, const char * szFilename, CSphVecto
 		iTotalRead += iBytesRead;
 	}
 	while ( iBytesRead > 0 );
+	close ( iRead );
 
 	int iStatus, iResult;
 	do
