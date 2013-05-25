@@ -2042,7 +2042,7 @@ protected:
 		// throw away everything which is over the token size
 		bool bFit = ( m_iAccum<SPH_MAX_WORD_LEN );
 		if ( IS_UTF8 )
-			bFit &= ( m_pAccum-m_sAccum+SPH_MAX_UTF8_BYTES<=sizeof(m_sAccum));
+			bFit &= ( m_pAccum-m_sAccum+SPH_MAX_UTF8_BYTES<=(int)sizeof(m_sAccum));
 
 		if ( bFit )
 		{
@@ -2962,7 +2962,7 @@ static int TokenizeOnWhitespace ( CSphVector<CSphString> & dTokens, BYTE * sFrom
 			// accumulate everything else
 			if ( iAccum<SPH_MAX_WORD_LEN )
 			{
-				if ( bUtf8 && ( pAccum-sAccum+SPH_MAX_UTF8_BYTES<=sizeof(sAccum) ) )
+				if ( bUtf8 && ( pAccum-sAccum+SPH_MAX_UTF8_BYTES<=(int)sizeof(sAccum) ) )
 				{
 					pAccum += sphUTF8Encode ( pAccum, iCode );
 					iAccum++;
@@ -3502,7 +3502,7 @@ BYTE * CSphTokenizerTraits<IS_UTF8>::GetBlendedVariant ()
 
 	// case 2, caller is checking for pending variants, have we even got any?
 	if ( !m_bBlendAdd )
-		return false;
+		return NULL;
 
 	// handle trim_none
 	// this MUST be the first handler, so that we could avoid copying below, and just return the original accumulator
@@ -5201,6 +5201,7 @@ int SelectParser_t::GetToken ( YYSTYPE * lvalp )
 		char * pEnd = NULL;
 		double fDummy; // to avoid gcc unused result warning
 		fDummy = strtod ( m_pCur, &pEnd );
+		fDummy *= 2; // to avoid gcc unused variable warning
 
 		m_pCur = pEnd;
 		lvalp->m_iEnd = m_pCur-m_pStart;
@@ -10238,7 +10239,6 @@ int CSphIndex_VLN::Build ( const CSphVector<CSphSource*> & dSources, int iMemory
 			{
 				ARRAY_FOREACH ( i, dFieldMvaIndexes )
 				{
-					CSphAttrLocator tLoc = dFieldMvaIndexes[i].m_tLocator;
 					int iAttr = dFieldMvaIndexes[i].m_iAttr;
 					int iMVA = dFieldMvaIndexes[i].m_iMVAAttr;
 					bool bMva64 = dFieldMvaIndexes[i].m_bMva64;
@@ -15822,7 +15822,7 @@ int CSphIndex_VLN::DebugCheck ( FILE * fp )
 		// do checks
 		if ( iDictDocs!=iDoclistDocs )
 			LOC_FAIL(( fp, "doc count mismatch (wordid="UINT64_FMT"(%s), dict=%d, doclist=%d, hitless=%s)",
-				uint64_t(uWordid), sWord, iDictDocs, iDoclistDocs, ( bHitless?"true":false ) ));
+				uint64_t(uWordid), sWord, iDictDocs, iDoclistDocs, ( bHitless?"true":"false" ) ));
 
 		if ( ( iDictHits!=iDoclistHits || iDictHits!=iHitlistHits ) && !bHitless )
 			LOC_FAIL(( fp, "hit count mismatch (wordid="UINT64_FMT"(%s), dict=%d, doclist=%d, hitlist=%d)",

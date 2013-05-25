@@ -1339,7 +1339,7 @@ public:
 	}
 
 	/// check if this sorter does groupby
-	virtual bool IsGroupby ()
+	virtual bool IsGroupby () const
 	{
 		return true;
 	}
@@ -2951,7 +2951,7 @@ ISphMatchSorter * sphCreateQueue ( const CSphQuery * pQuery, const CSphSchema & 
 		}
 	}
 
-#define LOC_CHECK(_cond,_msg) if (!(_cond)) { sError = "invalid schema: " _msg; return false; }
+#define LOC_CHECK(_cond,_msg) if (!(_cond)) { sError = "invalid schema: " _msg; return NULL; }
 
 	int iGroupby = tSorterSchema.GetAttrIndex ( "@groupby" );
 	if ( iGroupby>=0 )

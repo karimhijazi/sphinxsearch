@@ -2152,7 +2152,6 @@ public:
 
 	DWORD CopyAttr ( const BYTE * pSrc )
 	{
-		assert ( m_dDst.GetLength()>0 && m_dDst.GetLength()<( I64C(1)<<32 ) ); // should be 32 bit offset
 		return CopyPackedString ( pSrc, m_dDst );
 	}
 };
@@ -2213,7 +2212,6 @@ public:
 
 	DWORD CopyAttr ( const DWORD * pSrc )
 	{
-		assert ( m_dDst.GetLength()>0 && m_dDst.GetLength()<( I64C(1)<<32 ) ); // should be 32 bit offset
 		return CopyMva ( pSrc, m_dDst );
 	}
 };
