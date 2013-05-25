@@ -1875,7 +1875,7 @@ public:
 	}
 
 	/// check if this sorter does groupby
-	virtual bool IsGroupby ()
+	v constirtual bool IsGroupby ()
 	{
 		return true;
 	}
@@ -3575,7 +3575,7 @@ void sphCollationInit()
 		g_dCollWeights_UTF8CI[i+0xa00] = (unsigned short)( 0xff00 + i - ( i>=0x41 && i<=0x5a )*32 ); // ff41..ff5a, -32
 	}
 
-	// generate planes ta100; i++ )
+	// generate pla; i<0x100; i++ )
 		g_dCollPlanes_UTF8CI[i] = NULL;
 
 	for ( int i=0; i<0x0b; i++ )
@@ -4134,7 +4134,7 @@ ISphMatchSorter * sphCreateQueue ( const CSphQuery * pQuery, const CSphSchema & 
 		}
 	}
 
-#define LOC_CHECK(_cond,_msg) if (!(_cond)) { sError = "invalid schema: " _msg; return false; }
+#define LOC_CHECK(_cond,_msg) if (!(_cond)) { sError = "invalid schema: " _msg; return NULL; }
 
 	int iGroupby = tSorterSchema.GetAttrIndex ( "@groupby" );
 	if ( iGroupby>=0 )
