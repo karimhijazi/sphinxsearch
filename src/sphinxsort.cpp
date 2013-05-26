@@ -1562,9 +1562,9 @@ public:
 	}
 
 	/// schema setup
-	virtual void SetSchema ( CSphSchema & tSchema )
+	virtual void SwapIn ( CSphSchema & tSchema )
 	{
-		SwapSchema ( tSchema );
+		m_tSchema.Swap ( tSchema );
 		m_tGroupSorter.m_pCloner = &m_tSchema;
 
 		bool bAggrStarted = false;
@@ -2430,9 +2430,9 @@ public:
 	}
 
 	/// schema setup
-	virtual void SetSchema ( CSphSchema & tSchema )
+	virtual void SwapIn ( CSphSchema & tSchema )
 	{
-		SwapSchema ( tSchema );
+		m_tSchema.Swap ( tSchema );
 
 		bool bAggrStarted = false;
 		for ( int i=0; i<m_tSchema.GetAttrsCount(); i++ )
@@ -3878,7 +3878,7 @@ int CollateLibcCS ( const BYTE * p, bool bPacked )
 /// 1st level LUT
 static unsigned short * g_dCollPlanes_UTF8CI[0x100];
 
-/// 2n collation data
+/// al collation data
 static unsigned short g_dCollWeights_UTF8CI[0xb00] =
 {
 	// weights for 0x0 to 0x5ff
@@ -4775,7 +4775,7 @@ ISphMatchSorter * sphCreateQueue ( const CSphQuery * pQuery, const CSphSchema & 
 	assert ( pTop );
 	pTop->SetState ( tStateMatch );
 	pTop->SetGroupState ( tStateGroup );
-	pTop->SetSchema ( tSorterSchema );
+	pTop->SwapIn ( tSorterSchema );
 	pTop->m_bRandomize = bRandomize;
 
 	if ( bRandomize )
