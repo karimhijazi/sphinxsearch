@@ -2000,9 +2000,9 @@ public:
 	}
 
 	/// schema setup
-	virtual void SetSchema ( CSphSchema & tSchema )
+	virtual void SwapIn ( CSphSchema & tSchema )
 	{
-		SwapSchema ( tSchema );
+		m_tSchema.Swap ( tSchema );
 		m_tGroupSorter.m_pCloner = &m_tSchema;
 
 		bool bAggrStarted = false;
