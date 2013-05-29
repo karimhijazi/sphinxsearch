@@ -5651,9 +5651,17 @@ bool MinimizeAggrResult ( AggrResult_t & tRes, const CSphQuery & tQuery, bool bH
 					else if ( tQueryItem.m_sExpr=="weight()" )
 						sExpr = sWeight;
 
-					if ( tFrontendSchema.GetAttr(j).m_iIndex<0
-						&& ( ( sExpr && tCol.m_sName==sExpr && tQueryItem.m_eAggrFunc==SPH_AGGR_NONE )
-						|| ( tQueryItem.m_sAlias.cstr() && tQueryItem.m_sAlias==tCol.m_sName ) ) )
+					if ( tFrontendSchema.GetAttr(j).m_iIndex>=0 )
+						continue;
+
+					if ( ( sExpr && tCol.m_sName==sExpr && tQueryItem.m_eAggrFunc==SPH_AGGR_NONE )
+						 || ( tQueryItem.m_sAlias.cstr() && tQueryItem.m_sAlias==tCol.m_sName
+								// do not add attr2 to frontend schema in cases like this
+								// attr1 AS attr2
+								&& ( tRes.m_tSchema.GetAttrIndex ( sExpr )==-1
+								// but add attr2, not attr1 in cases like this
+								// MIN(attr1) AS attr2
+								|| tQueryItem.m_eAggrFunc!=SPH_AGGR_NONE ) ) )
 					{
 						bAdd = true;
 						dKnownItems.Add(j);
@@ -5666,7 +5674,7 @@ bool MinimizeAggrResult ( AggrResult_t & tRes, const CSphQuery & tQuery, bool bH
 								tItem.m_sName = tQueryItem.m_sAlias;
 							else
 								tItem.m_sName = tQueryItem.m_sExpr;
-						};
+						}
 					}
 				}
 				if ( !bAdd && pExtraSchema!=NULL )
