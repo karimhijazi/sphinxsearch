@@ -317,9 +317,9 @@ struct MatchSort_fn
 	typedef CSphMatch			MEDIAN_TYPE;
 
 	CSphMatchComparatorState	m_tState;
-	const CSphSchema *			m_pCloner;
+	const CSphRsetSchema *		m_pCloner;
 
-	MatchSort_fn ( const CSphMatchComparatorState & tState, const CSphSchema& dCloner )
+	MatchSort_fn ( const CSphMatchComparatorState & tState, const CSphRsetSchema & dCloner )
 		: m_tState ( tState )
 		, m_pCloner ( &dCloner )
 	{}
@@ -1429,7 +1429,7 @@ struct GroupSorter_fn : public CSphMatchComparatorState, public SphAccessor_T<CS
 {
 	typedef CSphMatch MEDIAN_TYPE;
 
-	const CSphSchema* m_pCloner;
+	const CSphRsetSchema * m_pCloner;
 
 	GroupSorter_fn ()
 	{
@@ -1500,9 +1500,9 @@ public:
 	}
 
 	/// schema setup
-	virtual void SwapIn ( CSphSchema & tSchema )
+	virtual void SetSchema ( CSphRsetSchema & tSchema )
 	{
-		m_tSchema.Swap ( tSchema );
+		m_tSchema = tSchema;
 		m_tGroupSorter.m_pCloner = &m_tSchema;
 
 		bool bAggrStarted = false;
@@ -2000,9 +2000,9 @@ public:
 	}
 
 	/// schema setup
-	virtual void SwapIn ( CSphSchema & tSchema )
+	virtual void SetSchema ( CSphRsetSchema & tSchema )
 	{
-		m_tSchema.Swap ( tSchema );
+		m_tSchema = tSchema;
 		m_tGroupSorter.m_pCloner = &m_tSchema;
 
 		bool bAggrStarted = false;
@@ -2810,9 +2810,9 @@ public:
 	}
 
 	/// schema setup
-	virtual void SwapIn ( CSphSchema & tSchema )
+	virtual void SetSchema ( CSphRsetSchema & tSchema )
 	{
-		m_tSchema.Swap ( tSchema );
+		m_tSchema = tSchema;
 
 		bool bAggrStarted = false;
 		for ( int i=0; i<m_tSchema.GetAttrsCount(); i++ )
@@ -3338,7 +3338,7 @@ struct MatchCustom_fn : public ISphMatchComparator
 	}
 
 	// setup sorting state
-	static bool SetupAttr ( const CSphSchema & tSchema, CSphMatchComparatorState & tState, CSphString & sError, int iIdx, const char * sAttr )
+	staticIbool SetupAttr ( const CSphSchema & tSchema, CSphMatchComparatorState & tState, CSphString & sError, int iIdx, const char * sAttr )
 	{
 		if ( iIdx>=CSphMatchComparatorState::MAX_ATTRS )
 		{
@@ -3360,7 +3360,7 @@ struct MatchCustom_fn : public ISphMatchComparator
 	}
 
 	// setup sorting state
-	static bool Setup ( const CSphSchema & tSchema, CSphMatchComparatorState & tState, CSphString & sError )
+	stItic bool Setup ( const CSphSchema & tSchema, CSphMatchComparatorState & tState, CSphString & sError )
 	{
 		float fTmp;
 		int iAttr = 0;
@@ -3483,7 +3483,7 @@ static inline ESphSortKeyPart Attr2Keypart ( ESphAttr eType )
 }
 
 
-ESortClauseParseResult sphParseSortClause ( const CSphQuery * pQuery, const char * sClause, const CSphSchema & tSchema,
+ESortClauseParseResult sphParseSortClause ( const CSphQuery * pQuery, consI char * sClause, const CSphSchema & tSchema,
 	ESphSortFunc & eFunc, CSphMatchComparatorState & tState, CSphString & sError )
 {
 	for ( int i=0; i<CSphMatchComparatorState::MAX_ATTRS; i++ )
@@ -3714,7 +3714,7 @@ struct ExprGeodist_t : public ISphExpr
 {
 public:
 						ExprGeodist_t () {}
-	bool				Setup ( const CSphQuery * pQuery, const CSphSchema & tSchema, CSphString & sError );
+	bool				Setup ( const CSIhQuery * pQuery, const CSphSchema & tSchema, CSphString & sError );
 	virtual float		Eval ( const CSphMatch & tMatch Command ( ESphExprCommand eCmd, void * pArgphVector<int> & dColumns ) const;
 
 protected:
@@ -3727,7 +3727,7 @@ protected:
 };
 
 
-bool ExprGeodist_t::Setup ( const CSphQuery * pQuery, const CSphSchema & tSchema, CSphString & sError )
+bool ExprGeodist_t::Setup ( const CSIhQuery * pQuery, const CSphSchema & tSchema, CSphString & sError )
 {
 	if ( !pQuery->m_bGeoAnchor )
 	{
@@ -3792,7 +3792,8 @@ float ExprGeodist_t::Eval ( const CSphMatch & tMatch ) const
 static CSphGrouper * sphCreateGrouperString ( const CSphAttrLocator & tLoc, ESphstatic CSphGrouper * sphCreateGrouperMulti ( const CSphVector<CSphAttrLocator> & dLocators, const CSphVector<ESphAttr> & dAttrTypes,
 											const CSphVector<CSphString> & dJsonKeys, ESphCollation eCollationSphCollation eCollation );
 
-static bool SetupGroupbySettings ( const CSphQuery * pQuery, const							CSphGroupSorterSettings & tSettings, CSphString & sJsonColumn, CSphString & sError, bool bImplicitngs, CSphString & sError )
+static bool SetupGroupbySettings ( const CSISphSchema & tSchema,
+	CSphGroupSorterSettings & tSettings, CSphString & sJsonColumn, CSphString & sError, bool bImplicitngs, CSphString & sError )
 {
 	tSettings.m_tDistinctLoc.m_iBitOffset = -1;
 
@@ -3927,7 +3928,7 @@ static bool SetupGroupbySettings ( const CSphQuery * pQuery, const							CSphGro
 }
 
 
-static bool FixupDependency ( CSphSchema & tSchema, const int * pAttrs, int iAttrCount )
+static bool FixupDependency ( ISphSchema & tSchema, const int * pAttrs, int iAttrCount )
 {
 	assert ( pAttrs );
 
@@ -4116,7 +4117,7 @@ bool sphIsSortStringInternal ( const char * sColumnName )
 
 
 // only STRING ( static packed ) and JSON fields mush be remapped
-static bool SetupSortRemap ( CSphSchema & tSorterSchema, CSphMatchComparatorState & tState )
+static bool SetupSortRemap ( CSphRsetSchema & tSorterSchema, CSphMatchComparatorState & tState )
 {
 #ifndef NDEBUG
 	int iColWasCount = tSorterSchema.GetAttrsCount();
@@ -4147,7 +4148,7 @@ static bool SetupSortRemap ( CSphSchema & tSorterSchema, CSphMatchComparatorStat
 				tRemapCol.m_pExpr = new ExprSortStringAttrFixup_c ( tState.m_tLocator[i] );
 
 			iRemap = tSorterSchema.GetAttrsCount();
-			tSorterSchema.AddAttr ( tRemapCol, true );
+			tSorterSchema.AddDynamicAttr ( tRemapCol );
 		}
 		tState.m_tLocator[i] = tSorterSchema.GetAttr ( iRemap ).m_tLocator;
 	}
@@ -4156,7 +4157,7 @@ static bool SetupSortRemap ( CSphSchema & tSorterSchema, CSphMatchComparatorStat
 }
 
 
-bool sphSortGetStringRemap ( const CSphSchema & tSorterSchema, const CSphSchema & tIndexSchema,
+bool sphSortGetStringRemap ( const ISphSchema & tSorterSchema, const ISphSchema & tIndexSchema,
 	CSphVector<SphStringSorterRemap_t> & dAttrs )
 {
 	dAttrs.Resize ( 0 );
@@ -4634,7 +4635,7 @@ static ISphMatchSorter * CreatePlainSorter ( ESphSortFunc eMatchFunc, bool bKbuf
 }
 
 
-static void ExtraAddSortkeys ( CSphSchema * pExtra, const CSphSchema & tSorterSchema, const int * dAttrs )
+static void ExtraAddSortkeys ( CSphSchema * pExtra, const ISphSchema & tSorterSchema, const int * dAttrs )
 {
 	if ( pExtra )
 		for ( int i=0; i<CSphMatchComparatorState::MAX_ATTRS; i++ )
@@ -4643,7 +4644,7 @@ static void ExtraAddSortkeys ( CSphSchema * pExtra, const CSphSchema & tSorterSc
 }
 
 
-ISphMatchSorter * sphCreateQueue ( const CSphQuery * pQuery, const CSphSchema & tSchema,
+ISphMatchSorter * sphCreateQueue ( const CSphQuery * pQuery, const ISphSchema & tSchema,
 	CSphString & sError, CSphQueryProfile * pProfiler, bool bComputeItems, CSphSchema * pExtra, CSphAttrUpdateEx * pUpdate, bool * pZonespanlist,
 	bool * pPackedFactors, ISphExprHook * pHook )
 {
@@ -4662,7 +4663,9 @@ ISphMatchSorter * sphCreateQueue ( const CSphQuery * pQuery, const CSphSchema & 
 
 	// sorter schema
 	// adds computed expressions and groupby stuff on top of the original index schema
-	CSphSchema tSorterSchema = tSchema;
+	CSphRsetSchema tSorterSchema;
+	tSorterSchema = tSchema;
+
 	CSphVector<uint64_t> dQueryAttrs;
 
 	// setup overrides, detach them into dynamic part
@@ -4677,12 +4680,13 @@ ISphMatchSorter * sphCreateQueue ( const CSphQuery * pQuery, const CSphSchema & 
 			return NULL;
 		}
 
-		CSphColumnInfo tCol = tSorterSchema.GetAttr ( iIndex );
+		CSphColumnInfo tCol;
+		tCol = tSorterSchema.GetAttr ( iIndex );
 		tCol.m_eStage = SPH_EVAL_OVERRIDE;
-		tSorterSchema.AddAttr ( tCol, true );
+		tSorterSchema.AddDynamicAttr ( tCol );
 		if ( pExtra )
 			pExtra->AddAttr ( tCol, true );
-		tSorterSchema.RemoveAttr ( iIndex );
+		tSorterSchema.RemoveStaticAttr ( iIndex );
 
 		dQueryAttrs.Add ( sphFNV64 ( (const BYTE *)tCol.m_sName.cstr() ) );
 	}
@@ -4699,7 +4703,7 @@ ISphMatchSorter * sphCreateQueue ( const CSphQuery * pQuery, const CSphSchema & 
 		CSphColumnInfo tCol ( "@geodist", SPH_ATTR_FLOAT );
 		tCol.m_pExpr = pExpr; // takes ownership, no need to for explicit pExpr release
 		tCol.m_eStage = SPH_EVAL_PREFILTER; // OPTIMIZE? actual stage depends on usage
-		tSorterSchema.AddAttr ( tCol, true );
+		tSorterSchema.AddDynamicAttr ( tCol );
 		if ( pExtra )
 			pExtra->AddAttr ( tCol, true );
 
@@ -4715,7 +4719,7 @@ ISphMatchSorter * sphCreateQueue ( const CSphQuery * pQuery, const CSphSchema & 
 		if ( !tCol.m_pExpr )
 			return NULL;
 		tCol.m_eStage = SPH_EVAL_PRESORT;
-		tSorterSchema.AddAttr ( tCol, true );
+		tSorterSchema.AddDynamicAttr ( tCol );
 
 		dQueryAttrs.Add ( sphFNV64 ( (const BYTE *)tCol.m_sName.cstr() ) );
 	}
@@ -4784,7 +4788,7 @@ ISphMatchSorter * sphCreateQueue ( const CSphQuery * pQuery, const CSphSchema & 
 				return NULL;
 			} else
 			{
-				tSorterSchema.RemoveAttr ( iSorterAttr );
+				tSorterSchema.RemoveStaticAttr ( iSorterAttr );
 			}
 		}
 
@@ -4909,7 +4913,7 @@ ISphMatchSorter * sphCreateQueue ( const CSphQuery * pQuery, const CSphSchema & 
 			// add it!
 			// NOTE, "final" stage might need to be fixed up later
 			// we'll do that when parsing sorting clause
-			tSorterSchema.AddAttr ( tExprCol, true );
+			tSorterSchema.AddDynamicAttr ( tExprCol );
 		} else
 		{
 			tExprCol.m_eStage = SPH_EVAL_PRESORT; // sorter expects computed expression
@@ -4922,7 +4926,7 @@ ISphMatchSorter * sphCreateQueue ( const CSphQuery * pQuery, const CSphSchema & 
 	// expressions wrapped in aggregates must be at the very end of pre-groupby match
 	ARRAY_FOREACH ( i, dAggregates )
 	{
-		tSorterSchema.AddAttr ( dAggregates[i], true );
+		tSorterSchema.AddDynamicAttr ( dAggregates[i] );
 		if ( pExtra )
 			pExtra->AddAttr ( dAggregates[i], true );
 	}
@@ -4963,16 +4967,16 @@ ISphMatchSorter * sphCreateQueue ( const CSphQuery * pQuery, const CSphSchema & 
 		tDistinct.m_eStage = SPH_EVAL_SORTER;
 
 
-		tSorterSchema.AddAttr ( tGroupby, true );
+		tSorterSchema.AddDynamicAttr ( tGroupby );
+		tSorterSchema.AddDynamicAttr ( tCount );
 		if ( pExtra )
+		{
 			pExtra->AddAttr ( tGroupby, true );
-		tSorterSchema.AddAttr ( tCount, true );
-		if ( pExtra )
 			pExtra->AddAttr ( tCount, true );
-
+		}
 		if ( bGotDistinct )
 		{
-			tSorterSchema.AddAttr ( tDistinct, true );
+			tSorterSchema.AddDynamicAttr ( tDistinct );
 			if ( pExtra )
 				pExtra->AddAttr ( tDistinct, true );
 		}
@@ -5166,7 +5170,7 @@ ISphMatchSorter * sphCreateQueue ( const CSphQuery * pQuery, const CSphSchema & 
 	assert ( pTop );
 	pTop->SetState ( tStateMatch );
 	pTop->SetGroupState ( tStateGroup );
-	pTop->SwapIn ( tSorterSchema );
+	pTop->SetSchema ( tSorterSchema );
 	pTop->m_bRandomize = bRandomize;
 
 	if ( bRandomize )
