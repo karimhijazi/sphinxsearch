@@ -5613,15 +5613,23 @@ bool MinimizeAggrResult ( AggrResult_t & tRes, const CSphQuery & tQuery, bool bH
 				if ( *tCol.m_sName.cstr()=='@' )
 				{
 					ARRAY_FOREACH ( j, (*pSelectItems) )
-						if ( tFrontendSchema.GetAttr(j).m_iIndex<0
-							&& ( (*pSelectItems)[j].m_sExpr.cstr() && (*pSelectItems)[j].m_sExpr==tCol.m_sName ) )
+					{
+						const CSphQueryItem & tQueryItem = (*pSelectItems)[j];
+						const char * sExpr = tQueryItem.m_sExpr.cstr();
+						if ( tQueryItem.m_sExpr=="count(*)" )
+							sExpr = sCount;
+						else if ( tQueryItem.m_sExpr=="weight()" )
+							sExpr = sWeight;
+
+						if ( tFrontendSchema.GetAttr(j).m_iIndex<0 && sExpr && tCol.m_sName==sExpr )
 						{
 							CSphColumnInfo & tItem = tFrontendSchema.GetWAttr(j);
 							tItem.m_iIndex = tInternalSchema.GetAttrsCount();
-							tItem.m_sName = (*pSelectItems)[j].m_sAlias;
+							tItem.m_sName = tQueryItem.m_sAlias;
 							dKnownItems.Add(j);
 							++iKnownItems;
 						}
+					}
 					if ( tFrontendSchema.GetAttr ( tCol.m_sName.cstr() )==NULL )
 					{
 						CSphColumnInfo & tItem = tFrontendSchema.GetWAttrs().Add();
