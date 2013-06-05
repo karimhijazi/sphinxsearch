@@ -2570,7 +2570,7 @@ int CollateUtf8GeneralCI ( const BYTE * pArg1, const BYTE * pArg2 )
 
 	if ( pStr1>=pMax1 && pStr2>=pMax2 )
 		return 0;
-	return ( pStr1==pMax1 ) ? 1 : -1;
+	return ( pStr1<pMax1 ) ? 1 : -1;
 }
 
 
