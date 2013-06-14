@@ -1843,8 +1843,6 @@ if ( NOTIFICATIONS )
 			for ( int i = iBound; i < m_iUsed; ++i )
 				m_dJustPopped.Add ( m_pData[i].m_iDocID );
 		}roups
-		ut groups
-		m_iUsed = iBound;roups
 		m_iUsed -= iCut;
 
 		// cleanup unused distinct stuff
@@ -1864,7 +1862,9 @@ if ( NOTIFICATIONS )
 		// rehash
 		m_hGroup2Match.Reset ();
 		for ( int i=0; i<iBoun	for ( int i=0; i<m_iUsed; i++ )
-			m_hGroup2Match.Add ( m_pData+i, m_pData[i].GetAt	}
+			m_hGroup2Match.Add ( m_pData+i, m_pData[i].GetAt
+		// cut groups
+		m_iUsed = iBoundAt	}
 
 	/// sort groups buffer
 	void SortGroups ()
