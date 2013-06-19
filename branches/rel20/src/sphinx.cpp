@@ -23398,17 +23398,52 @@ bool CSphSource_XMLPipe2::IterateKillListNext ( SphDocID_t & tDocId )
 	return true;
 }
 
+enum EXMLElem
+{
+	ELEM_DOCSET,
+	ELEM_SCHEMA,
+	ELEM_FIELD,
+	ELEM_ATTR,
+	ELEM_DOCUMENT,
+	ELEM_KLIST,
+	ELEM_NONE
+};
+
+static EXMLElem LookupElement ( const char * szName )
+{
+	if ( szName[0]!='s' )
+		return ELEM_NONE;
+
+	int iLen = strlen(szName);
+	if ( iLen>=11 && iLen<=15 )
+	{
+		char iHash = ( iLen + szName[7] ) & 15;
+		switch ( iHash )
+		{
+		case 1:		if ( !strcmp ( szName, "sphinx:docset" ) )		return ELEM_DOCSET;
+		case 0:		if ( !strcmp ( szName, "sphinx:schema" ) )		return ELEM_SCHEMA;
+		case 2:		if ( !strcmp ( szName, "sphinx:field" ) )		return ELEM_FIELD;
+		case 12:	if ( !strcmp ( szName, "sphinx:attr" ) )		return ELEM_ATTR;
+		case 3:		if ( !strcmp ( szName, "sphinx:document" ) )	return ELEM_DOCUMENT;
+		case 10:	if ( !strcmp ( szName, "sphinx:killlist" ) )	return ELEM_KLIST;
+		}
+	}
+
+	return ELEM_NONE;
+}
 
 void CSphSource_XMLPipe2::StartElement ( const char * szName, const char ** pAttrs )
 {
-	if ( !strcmp ( szName, "sphinx:docset" ) )
+	EXMLElem ePos = LookupElement ( szName );
+
+	switch ( ePos )
 	{
+	case ELEM_DOCSET:
 		m_bInDocset = true;
 		m_bFirstTagAfterDocset = true;
 		return;
-	}
 
-	if ( !strcmp ( szName, "sphinx:schema" ) )
+	case ELEM_SCHEMA:
 	{
 		if ( !m_bInDocset || !m_bFirstTagAfterDocset )
 		{
@@ -23426,10 +23461,10 @@ void CSphSource_XMLPipe2::StartElement ( const char * szName, const char ** pAtt
 
 		m_bFirstTagAfterDocset = false;
 		m_bInSchema = true;
-		return;
 	}
+	return;
 
-	if ( !strcmp ( szName, "sphinx:field" ) )
+	case ELEM_FIELD:
 	{
 		if ( !m_bInDocset || !m_bInSchema )
 		{
@@ -23468,10 +23503,10 @@ void CSphSource_XMLPipe2::StartElement ( const char * szName, const char ** pAtt
 			m_tSchema.AddAttr ( Info, true ); // all attributes are dynamic at indexing time
 			m_dDefaultAttrs.Add ( sDefault );
 		}
-		return;
 	}
+	return;
 
-	if ( !strcmp ( szName, "sphinx:attr" ) )
+	case ELEM_ATTR:
 	{
 		if ( !m_bInDocset || !m_bInSchema )
 		{
@@ -23530,11 +23565,10 @@ void CSphSource_XMLPipe2::StartElement ( const char * szName, const char ** pAtt
 			m_tSchema.AddAttr ( Info, true ); // all attributes are dynamic at indexing time
 			m_dDefaultAttrs.Add ( sDefault );
 		}
-
-		return;
 	}
+	return;
 
-	if ( !strcmp ( szName, "sphinx:document" ) )
+	case ELEM_DOCUMENT:
 	{
 		if ( !m_bInDocset || m_bInSchema )
 			return DocumentError ( "<sphinx:schema>" );
@@ -23566,11 +23600,10 @@ void CSphSource_XMLPipe2::StartElement ( const char * szName, const char ** pAtt
 
 		if ( m_pCurDocument->m_iDocID==0 )
 			Error ( "attribute 'id' required in <sphinx:document>" );
-
-		return;
 	}
+	return;
 
-	if ( !strcmp ( szName, "sphinx:killlist" ) )
+	case ELEM_KLIST:
 	{
 		if ( !m_bInDocset || m_bInDocument || m_bInSchema )
 		{
@@ -23579,52 +23612,58 @@ void CSphSource_XMLPipe2::StartElement ( const char * szName, const char ** pAtt
 		}
 
 		m_bInKillList = true;
-		return;
+	}
+	return;
+
+	case ELEM_NONE: break;// avoid warning
 	}
 
 	if ( m_bInKillList )
 	{
-		if ( !m_bInId )
+		if ( m_bInId )
 		{
-			if ( strcmp ( szName, "id" ) )
-			{
-				Error ( "only 'id' is allowed inside <sphinx:killlist>" );
-				return;
-			}
-
-			m_bInId = true;
-		} else
-			++m_iElementDepth;
-	}
-
-	if ( m_bInDocument )
-	{
-		if ( m_iCurField==-1 && m_iCurAttr==-1 )
-		{
-			for ( int i = 0; i < m_tSchema.m_dFields.GetLength () && m_iCurField==-1; i++ )
-				if ( m_tSchema.m_dFields[i].m_sName==szName )
-					m_iCurField = i;
-
-			for ( int i = 0; i < m_tSchema.GetAttrsCount () && m_iCurAttr==-1; i++ )
-				if ( m_tSchema.GetAttr(i).m_sName==szName )
-					m_iCurAttr = i;
-
-			if ( m_iCurAttr==-1 && m_iCurField==-1 )
-			{
-				m_bInIgnoredTag = true;
-
-				bool bInvalidFound = false;
-				for ( int i = 0; i < m_dInvalid.GetLength () && !bInvalidFound; i++ )
-					bInvalidFound = m_dInvalid[i]==szName;
-
-				if ( !bInvalidFound )
-				{
-					sphWarn ( "%s", DecorateMessage ( "unknown field/attribute '%s'; ignored", szName ) );
-					m_dInvalid.Add ( szName );
-				}
-			}
-		} else
 			m_iElementDepth++;
+			return;
+		}
+
+		if ( strcmp ( szName, "id" ) )
+		{
+			Error ( "only 'id' is allowed inside <sphinx:killlist>" );
+			return;
+		}
+
+		m_bInId = true;
+
+	} else if ( m_bInDocument )
+	{
+		if ( m_iCurField!=-1 || m_iCurAttr!=-1 )
+		{
+			m_iElementDepth++;
+			return;
+		}
+
+		for ( int i = 0; i < m_tSchema.m_dFields.GetLength () && m_iCurField==-1; i++ )
+			if ( m_tSchema.m_dFields[i].m_sName==szName )
+				m_iCurField = i;
+
+		for ( int i = 0; i < m_tSchema.GetAttrsCount () && m_iCurAttr==-1; i++ )
+			if ( m_tSchema.GetAttr(i).m_sName==szName )
+				m_iCurAttr = i;
+
+		if ( m_iCurAttr!=-1 || m_iCurField!=-1 )
+			return;
+
+		m_bInIgnoredTag = true;
+
+		bool bInvalidFound = false;
+		for ( int i = 0; i < m_dInvalid.GetLength () && !bInvalidFound; i++ )
+			bInvalidFound = m_dInvalid[i]==szName;
+
+		if ( !bInvalidFound )
+		{
+			sphWarn ( "%s", DecorateMessage ( "unknown field/attribute '%s'; ignored", szName ) );
+			m_dInvalid.Add ( szName );
+		}
 	}
 }
 
@@ -23633,66 +23672,81 @@ void CSphSource_XMLPipe2::EndElement ( const char * szName )
 {
 	m_bInIgnoredTag = false;
 
-	if ( !strcmp ( szName, "sphinx:docset" ) )
-		m_bInDocset = false;
-	else if ( !strcmp ( szName, "sphinx:schema" ) )
+	EXMLElem ePos = LookupElement ( szName );
+
+	switch ( ePos )
 	{
+	case ELEM_DOCSET:
+		m_bInDocset = false;
+		return;
+
+	case ELEM_SCHEMA:
 		m_bInSchema = false;
 		m_tDocInfo.Reset ( m_tSchema.GetRowSize () );
 		m_dStrAttrs.Resize ( m_tSchema.GetAttrsCount() );
+		return;
 
-	} else if ( !strcmp ( szName, "sphinx:document" ) )
-	{
+	case ELEM_DOCUMENT:
 		m_bInDocument = false;
 		if ( m_pCurDocument )
 			m_dParsedDocuments.Add ( m_pCurDocument );
 		m_pCurDocument = NULL;
+		return;
 
-	} else if ( !strcmp ( szName, "sphinx:killlist" ) )
-	{
+	case ELEM_KLIST:
 		m_bInKillList = false;
+		return;
 
-	} else if ( m_bInKillList )
+	case ELEM_FIELD: // avoid warnings
+	case ELEM_ATTR:
+	case ELEM_NONE: break;
+	}
+
+	if ( m_bInKillList )
 	{
-		if ( m_iElementDepth==0 )
+		if ( m_iElementDepth!=0 )
 		{
-			if ( m_bInId )
-			{
-				m_pFieldBuffer [ Min ( m_iFieldBufferLen, m_iFieldBufferMax-1 ) ] = '\0';
-				m_dKillList.Add ( sphToDocid ( (const char *)m_pFieldBuffer ) );
-				m_iFieldBufferLen = 0;
-				m_bInId = false;
-			}
-		} else
 			m_iElementDepth--;
+			return;
+		}
+
+		if ( m_bInId )
+		{
+			m_pFieldBuffer [ Min ( m_iFieldBufferLen, m_iFieldBufferMax-1 ) ] = '\0';
+			m_dKillList.Add ( sphToDocid ( (const char *)m_pFieldBuffer ) );
+			m_iFieldBufferLen = 0;
+			m_bInId = false;
+		}
 
 	} else if ( m_bInDocument && ( m_iCurAttr!=-1 || m_iCurField!=-1 ) )
 	{
-		if ( m_iElementDepth==0 )
+		if ( m_iElementDepth!=0 )
 		{
-			if ( m_iCurField!=-1 )
-			{
-				assert ( m_pCurDocument );
-				if ( !m_pCurDocument->m_dFields [ m_iCurField ].IsEmpty () )
-					sphWarn ( "duplicate text node <%s> - using first value", m_tSchema.m_dFields [ m_iCurField ].m_sName.cstr() );
-				else
-					m_pCurDocument->m_dFields [ m_iCurField ].SetBinary ( (char*)m_pFieldBuffer, m_iFieldBufferLen );
-			}
-			if ( m_iCurAttr!=-1 )
-			{
-				assert ( m_pCurDocument );
-				if ( !m_pCurDocument->m_dAttrs [ m_iCurAttr ].IsEmpty () )
-					sphWarn ( "duplicate attribute node <%s> - using first value", m_tSchema.GetAttr ( m_iCurAttr ).m_sName.cstr() );
-				else
-					m_pCurDocument->m_dAttrs [ m_iCurAttr ].SetBinary ( (char*)m_pFieldBuffer, m_iFieldBufferLen );
-			}
-
-			m_iFieldBufferLen = 0;
-
-			m_iCurAttr = -1;
-			m_iCurField = -1;
-		} else
 			m_iElementDepth--;
+			return;
+		}
+
+		if ( m_iCurField!=-1 )
+		{
+			assert ( m_pCurDocument );
+			if ( !m_pCurDocument->m_dFields [ m_iCurField ].IsEmpty () )
+				sphWarn ( "duplicate text node <%s> - using first value", m_tSchema.m_dFields [ m_iCurField ].m_sName.cstr() );
+			else
+				m_pCurDocument->m_dFields [ m_iCurField ].SetBinary ( (char*)m_pFieldBuffer, m_iFieldBufferLen );
+		}
+		if ( m_iCurAttr!=-1 )
+		{
+			assert ( m_pCurDocument );
+			if ( !m_pCurDocument->m_dAttrs [ m_iCurAttr ].IsEmpty () )
+				sphWarn ( "duplicate attribute node <%s> - using first value", m_tSchema.GetAttr ( m_iCurAttr ).m_sName.cstr() );
+			else
+				m_pCurDocument->m_dAttrs [ m_iCurAttr ].SetBinary ( (char*)m_pFieldBuffer, m_iFieldBufferLen );
+		}
+
+		m_iFieldBufferLen = 0;
+
+		m_iCurAttr = -1;
+		m_iCurField = -1;
 	}
 }
 
