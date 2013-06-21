@@ -579,7 +579,7 @@ static size_t sphRead ( int iFD, void * pBuf, size_t iCount )
 }
 
 
-static void GetFileStats ( const char * szFilename, CSphSavedFile & tInfo );
+static bool GetFileStats ( const char * szFilename, CSphSavedFile & tInfo, CSphString * pError );
 
 /////////////////////////////////////////////////////////////////////////////
 // INTERNAL SPHINX CLASSES DECLARATIONS
@@ -3152,7 +3152,7 @@ bool CSphTokenizerTraits<IS_UTF8>::LoadSynonyms ( const char * sFilename, CSphSt
 	if ( !sFilename || !*sFilename )
 		return true;
 
-	GetFileStats ( sFilename, m_tSynFileInfo );
+	GetFileStats ( sFilename, m_tSynFileInfo, NULL );
 
 	FILE * fp = fopen ( sFilename, "r" );
 	if ( !fp )
@@ -15429,6 +15429,17 @@ int CSphIndex_VLN::DebugCheck ( FILE * fp )
 	if ( !rdHits.Open ( GetIndexFileName("spp"), sError ) )
 		LOC_FAIL(( fp, "unable to open hitlist: %s", sError.cstr() ));
 
+	CSphSavedFile tStat;
+	const CSphTokenizerSettings & tTokenizerSettings = m_pTokenizer->GetSettings ();
+	if ( !tTokenizerSettings.m_sSynonymsFile.IsEmpty() && !GetFileStats ( tTokenizerSettings.m_sSynonymsFile.cstr(), tStat, &sError ) )
+		LOC_FAIL(( fp, "unable to open exceptions '%s': %s", tTokenizerSettings.m_sSynonymsFile.cstr(), sError.cstr() ));
+
+	const CSphDictSettings & tDictSettings = m_pDict->GetSettings ();
+	if ( !tDictSettings.m_sStopwords.IsEmpty() && !GetFileStats ( tDictSettings.m_sStopwords.cstr(), tStat, &sError ) )
+		LOC_FAIL(( fp, "unable to open stopwords '%s': %s", tDictSettings.m_sStopwords.cstr(), sError.cstr() ));
+	if ( !tDictSettings.m_sWordforms.IsEmpty() && !GetFileStats ( tDictSettings.m_sWordforms.cstr(), tStat, &sError ) )
+		LOC_FAIL(( fp, "unable to open wordforms '%s': %s", tDictSettings.m_sWordforms.cstr(), sError.cstr() ));
+
 	////////////////////
 	// check dictionary
 	////////////////////
@@ -16663,12 +16674,12 @@ bool sphCalcFileCRC32 ( const char * szFilename, DWORD & uCRC32 )
 }
 
 
-static void GetFileStats ( const char * szFilename, CSphSavedFile & tInfo )
+static bool GetFileStats ( const char * szFilename, CSphSavedFile & tInfo, CSphString * pError )
 {
-	if ( !szFilename )
+	if ( !szFilename || !*szFilename )
 	{
 		memset ( &tInfo, 0, sizeof ( tInfo ) );
-		return;
+		return true;
 	}
 
 	tInfo.m_sFilename = szFilename;
@@ -16676,7 +16687,12 @@ static void GetFileStats ( const char * szFilename, CSphSavedFile & tInfo )
 	struct_stat tStat;
 	memset ( &tStat, 0, sizeof ( tStat ) );
 	if ( stat ( szFilename, &tStat ) < 0 )
+	{
+		if ( pError )
+			*pError = strerror ( errno );
 		memset ( &tStat, 0, sizeof ( tStat ) );
+		return false;
+	}
 
 	tInfo.m_uSize = tStat.st_size;
 	tInfo.m_uCTime = tStat.st_ctime;
@@ -16686,6 +16702,7 @@ static void GetFileStats ( const char * szFilename, CSphSavedFile & tInfo )
 	sphCalcFileCRC32 ( szFilename, uCRC32 );
 
 	tInfo.m_uCRC32 = uCRC32;
+	return true;
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -17116,7 +17133,7 @@ void CSphDictCRCTraits::LoadStopwords ( const char * sFiles, ISphTokenizer * pTo
 
 		CSphSavedFile tInfo;
 		tInfo.m_sFilename = sName;
-		GetFileStats ( sName, tInfo );
+		GetFileStats ( sName, tInfo, NULL );
 		m_dSWFileInfos.Add ( tInfo );
 
 		// open file
@@ -17186,15 +17203,16 @@ void CSphDictCRCTraits::SweepWordformContainers ( const char * szFile, DWORD uCR
 
 WordformContainer_t * CSphDictCRCTraits::GetWordformContainer ( const char * szFile, DWORD uCRC32, const ISphTokenizer * pTokenizer, const char * sIndex )
 {
+	uint64_t uTokenizerFNV = pTokenizer->GetSettingsFNV();
 	ARRAY_FOREACH ( i, m_dWordformContainers )
 		if ( m_dWordformContainers[i]->IsEqual ( szFile, uCRC32 ) )
 		{
 			WordformContainer_t * pContainer = m_dWordformContainers[i];
-			if ( pTokenizer->GetSettingsFNV()==pContainer->m_uTokenizerFNV )
+			if ( uTokenizerFNV==pContainer->m_uTokenizerFNV )
 				return pContainer;
 
-			sphWarning ( "index %s: wordforms file %s is shared with index %s, but tokenizer settings are different; IGNORING wordforms", sIndex, szFile, pContainer->m_sIndexName.cstr() );
-			return NULL;
+			sphWarning ( "index %s: wordforms file %s is shared with index %s, but tokenizer settings are different", sIndex, szFile, pContainer->m_sIndexName.cstr() );
+			break;
 		}
 
 	WordformContainer_t * pContainer = LoadWordformContainer ( szFile, uCRC32, pTokenizer, sIndex );
@@ -17455,7 +17473,13 @@ WordformContainer_t * CSphDictCRCTraits::LoadWordformContainer ( const char * sz
 
 bool CSphDictCRCTraits::LoadWordforms ( const char * szFile, ISphTokenizer * pTokenizer, const char * sIndex )
 {
-	GetFileStats ( szFile, m_tWFFileInfo );
+	CSphString sError;
+	bool bGotStat = GetFileStats ( szFile, m_tWFFileInfo, &sError );
+	if ( szFile && *szFile && !bGotStat )
+	{
+		sphWarning ( "wordforms: failed to read file %s", szFile );
+		return false;
+	}
 
 	DWORD uCRC32 = m_tWFFileInfo.m_uCRC32;
 
