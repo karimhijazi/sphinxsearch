@@ -16030,8 +16030,12 @@ int CSphIndex_VLN::DebugCheck ( FILE * fp )
 					{
 						const DWORD uSpaOffset = pAttrs[dMvaItems[iItem]];
 
+						// zero offset means empty MVA in rt index
+						if ( !uSpaOffset )
+							continue;
+
 						// check offset (index)
-						if ( uMvaID==uLastID && uSpaOffset && bIsSpaValid && pMva!=pMvaBase+uSpaOffset )
+						if ( uMvaID==uLastID && bIsSpaValid && pMva!=pMvaBase+uSpaOffset )
 						{
 							LOC_FAIL(( fp, "unexpected MVA docid (row=%u, mvaattr=%d, docid expected="DOCID_FMT", got="DOCID_FMT", expected=%u, got=%u)",
 								uRow, iItem, uLastID, uMvaID, (DWORD)(pMva-pMvaBase), uSpaOffset ));
