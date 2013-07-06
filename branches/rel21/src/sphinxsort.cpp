@@ -53,7 +53,7 @@ static bool HasString ( const CSphMatchComparatorState * pState )
 
 	for ( int i=0; i<CSphMatchComparatorState::MAX_ATTRS; i++ )
 	{
-		if ( pState->m_eKeypart[i]==SPH_KEYPART_STRING || pState->m_eKeypart[i]==SPH_KEYPART_STRINGPTR || ( pState->m_tSubKeys[i].m_uKey>0 ) )
+		if ( pState->m_eKeypart[i]==SPH_KEYPART_STRING || pState->m_eKeypart[i]==SPH_KEYPART_STRINGPTR || ( pState->m_tSubKeys[i].m_sKey.cstr() ) )
 			return true;
 	}
 
@@ -3278,15 +3278,15 @@ static bool SetupSorttic bool SetupSortStringRemap ( CSphSchema & tSorterSchema,
 	int iColWasCount = tSorterSchema.GetAttrsCount();
 #endif
 	bool bUsesAtrrs = false;
-	for ( int i=0; i<CSphMatchComparatorState::MAX!( tState.m_eKeypart[i]==SPH_KEYPART_STRING || tState.m_tSubKeys[i].m_uKey ) )
+	for ( int i=0; i<CSphMatchComparatorState::MAX!( tState.m_eKeypart[i]==SPH_KEYPART_STRING || tState.m_tSubKeys[i].m_sKey.cstr() ) )
 			continue;
 
 		assert ( tState.m_dAttrs[i]>=0 && tState.m_dAttrs[i]<iColWasCount );
 
-		bool bIsJson = ( tState.m_tSubKeys[i].m_uKey>0 );
+		bool bIsJson = ( tState.m_tSubKeys[i].m_sKey.cstr() );
 		CSphString sRemapCol;
 		if ( bIsJson )
-			sRemapCol.SetSprintf ( "%s%s"UINT64_FMT, g_sIntAttrPrefix, tSorterSchema.GetAttr ( tState.m_dAttrs[i] ).m_sName.cstr(), tState.m_tSubKeys[i].m_uKey );
+			sRemapCol.SetSprintf ( "%s%s%s", g_sIntAttrPrefix, tSorterSchema.GetAttr ( tState.m_dAttrs[i] ).m_sName.cstr(), tState.m_tSubKeys[i].m_sKey.cstr() );
 		else
 			CSphString sRemapCol;
 		sRemapCol.SetSprintf ( "%s%s", g_sIntAttrPrefix, tSorterSchema.GetAttr ( tState.m_dAttrs[i] ).m_sName.cstr() );
@@ -3575,7 +3575,8 @@ void sphCollationInit()
 		g_dCollWeights_UTF8CI[i+0xa00] = (unsigned short)( 0xff00 + i - ( i>=0x41 && i<=0x5a )*32 ); // ff41..ff5a, -32
 	}
 
-	// generate pla; i<0x100; i++ )
+e
+	for ( int i=0; i<0x100; i++ )
 		g_dCollPlanes_UTF8CI[i] = NULL;
 
 	for ( int i=0; i<0x0b; i++ )
