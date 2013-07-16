@@ -859,7 +859,10 @@ ServedIndex_t * IndexHash_c::GetWlockedEntry ( const CSphString & tKey ) const
 
 ServedIndex_t & IndexHash_c::GetUnlockedEntry ( const CSphString & tKey ) const
 {
-	return BASE::operator[] ( tKey );
+	Rlock();
+	ServedIndex_t & tRes = BASE::operator[] ( tKey );
+	Unlock();
+	return tRes;
 }
 
 
@@ -10655,6 +10658,8 @@ void HandleMysqlCallKeywords ( NetOutputBuffer_c & tOut, BYTE uPacketID, SqlStmt
 	const ServedIndex_t * pServed = g_pIndexes->GetRlockedEntry ( tStmt.m_dInsertValues[1].m_sVal );
 	if ( !pServed || !pServed->m_bEnabled || !pServed->m_pIndex )
 	{
+		if ( pServed )
+			pServed->Unlock();
 		sError.SetSprintf ( "no such index %s", tStmt.m_dInsertValues[1].m_sVal.cstr() );
 		SendMysqlErrorPacket ( tOut, uPacketID, tStmt.m_sStmt, sError.cstr() );
 		return;
@@ -10718,6 +10723,8 @@ void HandleMysqlDescribe ( NetOutputBuffer_c & tOut, BYTE uPacketID, SqlStmt_t &
 	if ( !pServed || !pServed->m_bEnabled || !pServed->m_pIndex )
 	{
 		CSphString sError;
+		if ( pServed )
+			pServed->Unlock();
 		sError.SetSprintf ( "no such index '%s'", tStmt.m_sIndex.cstr() );
 		SendMysqlErrorPacket ( tOut, uPacketID, tStmt.m_sStmt, sError.cstr(), MYSQL_ERR_NO_SUCH_TABLE );
 		return;
