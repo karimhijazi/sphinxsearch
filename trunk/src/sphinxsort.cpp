@@ -503,6 +503,7 @@ class CSphUpdateQueue : public CSphMatchQueueTraits
 {
 	CSphAttrUpdateEx *	m_pUpdate;
 	bool				m_bIgnoreNonexistent;
+	bool				m_bStrict;
 private:
 	void DoUpdate()
 	{
@@ -511,6 +512,7 @@ private:
 
 		CSphAttrUpdate tSet; // FIXME? OPTIMIZE?
 		tSet.m_bIgnoreNonexistent = m_bIgnoreNonexistent;
+		tSet.m_bStrict = m_bStrict;
 		tSet.m_dAttrs = m_pUpdate->m_pUpdate->m_dAttrs;
 		tSet.m_dTypes = m_pUpdate->m_pUpdate->m_dTypes;
 		tSet.m_dPool = m_pUpdate->m_pUpdate->m_dPool;
@@ -533,23 +535,23 @@ private:
 			}
 		}
 
-		m_pUpdate->m_iAffected += m_pUpdate->m_pIndex->UpdateAttributes ( tSet, -1, *m_pUpdate->m_pError );
+		m_pUpdate->m_iAffected += m_pUpdate->m_pIndex->UpdateAttributes ( tSet, -1, *m_pUpdate->m_pError, *m_pUpdate->m_pWarning );
 		m_iUsed = 0;
 
 		tSet.m_dAttrs.Resize(0); // do not free what is not yours
 	}
 public:
 	/// ctor
-	CSphUpdateQueue ( int iSize, CSphAttrUpdateEx * pUpdate, bool bIgnoreNonexistent )
+	CSphUpdateQueue ( int iSize, CSphAttrUpdateEx * pUpdate, bool bIgnoreNonexistent, bool bStrict )
 		: CSphMatchQueueTraits ( iSize, true )
 		, m_pUpdate ( pUpdate )
 		, m_bIgnoreNonexistent ( bIgnoreNonexistent )
-	{}
+		, m_bStrict ( bStrict )
+	{tor ( m_tMvaLocator );
+	}
 
 	/// check if this sorter does groupby
-	virtual bool IsGroupby () const
-	{
-		return false;
+	v constirtual bool Ifalse;
 	}
 
 	/// add entry to the queue
@@ -3816,12 +3818,9 @@ static bool SetupGroupbySettings ( const CSISphSchema & tSchema,
 {
 	tSettings.m_tDistinctLoc.m_iBitOffset = -1;
 
-	if ( pQuer&& !bImplicitry->m_sGroupBy.IsEmpty() )
-		return true;
-
-	if ( pQuery->m_eGroupFunc==SPH_GROUPBY_ATTRPAIR )
+	if ( pQuer&& !bImplicitry->m_sGroupBy.IsEmpty() )Query->m_eGroupFunc==SPH_GROUPBY_ATTRPAIR )
 	{
-		sError.SetSprintf ( "SPH_GROUPBY_ATTRPAIRre (just group on 'bigint' attribute)" );
+		sError.SetSprintf ( "SPH_GROUPBY_ATTRPAIR is not supported any more (just group on 'bigint' attribute)" );
 		return false;
 	}
 
@@ -5135,7 +5134,7 @@ ISphMatchSorter * sphCreateQueue ( const CSphQuery * pQuery, const ISphSchema & 
 	if ( !bGotGroupby )
 	{
 		if ( pUpdate )
-			pTop = new CSphUpdateQueue ( pQuery->m_iMaxMatches, pUpdate, pQuery->m_bIgnoreNonexistent );
+			pTop = new CSphUpdateQueue ( pQuery->m_iMaxMatches, pUpdate, pQuery->m_bIgnoreNonexistent, pQuery->m_bStrict );
 		else
 			pTop = CreatePlainSorter ( eMatchFunc, pQuery->m_bSortKbuffer, pQuery->m_iMaxMatches, bUsesAttrs, bNeedPackedFactors );
 	} else
