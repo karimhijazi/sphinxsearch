@@ -3251,8 +3251,8 @@ struct ExprSortJson2StringPtr ExprSortStringAttrFixup_c : public ISphExpr
 			*ppStr = dBuf.LeakData();
 			return iStrLen;
 		}
-		case JSON_EOF:
-		break;
+		case JSON_EOF:	break;
+		case JSON_TOTAL: assert(0); break;
 		}
 
 		int iStriLen = sVal.Length();
@@ -3572,10 +3572,10 @@ void sphCollationInit()
 	{
 		g_dCollWeights_UTF8CI[i+0x800] = (unsigned short)( 0x2100 + i - ( i>=0x70 && i<=0x7f )*16 ); // 2170..217f, -16
 		g_dCollWeights_UTF8CI[i+0x900] = (unsigned short)( 0x2400 + i - ( i>=0xd0 && i<=0xe9 )*26 ); // 24d0..24e9, -26
-		g_dCollWeights_UTF8CI[i+0xa00] = (unsigned short)( 0xff00 + i - ( i>=0x41 && i<=0x5a )*32 ); // ff41..ff5a, -32
+		g_dCollWeights_UTF8CI[i+0xa00] = (unsigned short)( 0xff00 + i - ( i>=0x41 && i<=0a, -32
 	}
 
-e
+	// generate planes table
 	for ( int i=0; i<0x100; i++ )
 		g_dCollPlanes_UTF8CI[i] = NULL;
 
@@ -4049,9 +4049,9 @@ ISphMatchSorter * sphCreateQueue ( const CSphQuery * pQuery, const CSphSchema & 
 
 				// usual filter
 				tExprCol.m_eStage = SPH_EVAL_PREFILTER;
-				ARRAY_FOREACH ( i, dCur )
+				ARRAY_FOREACH ( j, dCur )
 				{
-					const CSphColumnInfo & tCol = tSorterSchema.GetAttr ( dCur[i] );
+					const CSphColumnInfo & tCol = tSorterSchema.GetAttr ( dCur[j] );
 					if ( tCol.m_bWeight )
 					{
 						tExprCol.m_eStage = SPH_EVAL_PRESORT;
@@ -4064,9 +4064,9 @@ ISphMatchSorter * sphCreateQueue ( const CSphQuery * pQuery, const CSphSchema & 
 				}
 				dCur.Uniq();
 
-				ARRAY_FOREACH ( i, dCur )
+				ARRAY_FOREACH ( j, dCur )
 				{
-					CSphColumnInfo & tDep = const_cast < CSphColumnInfo & > ( tSorterSchema.GetAttr ( dCur[i] ) );
+					CSphColumnInfo & tDep = const_cast < CSphColumnInfo & > ( tSorterSchema.GetAttr ( dCur[j] ) );
 					if ( tDep.m_eStage>tExprCol.m_eStage )
 						tDep.m_eStage = tExprCol.m_eStage;
 				}
