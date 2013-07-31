@@ -145,7 +145,7 @@ enum ProtocolType_e
 };
 
 
-const char * g_dProtoNames[PROTO_TOTAL] =
+static const char * g_dProtoNames[PROTO_TOTAL] =
 {
 	"sphinxapi", "sphinxql"
 };
@@ -283,7 +283,7 @@ enum ThdState_e
 	THD_STATE_TOTAL
 };
 
-const char * g_dThdStates[THD_STATE_TOTAL] = {
+static const char * g_dThdStates[THD_STATE_TOTAL] = {
 	"handshake", "net_read", "net_write", "query"
 };
 
@@ -523,7 +523,7 @@ enum
 
 
 /// command names
-const char * g_dApiCommands[SEARCHD_COMMAND_TOTAL] =
+static const char * g_dApiCommands[SEARCHD_COMMAND_TOTAL] =
 {
 	"search", "excerpt", "update", "keywords", "persist", "status", "query", "flushattrs"
 };
@@ -640,9 +640,9 @@ static SmallStringHash_T<Uservar_t>	g_hUservars;
 
 const int EXT_COUNT = 8;
 const int EXT_MVP = 8;
-const char * g_dNewExts[EXT_COUNT] = { ".new.sph", ".new.spa", ".new.spi", ".new.spd", ".new.spp", ".new.spm", ".new.spk", ".new.sps" };
-const char * g_dOldExts[] = { ".old.sph", ".old.spa", ".old.spi", ".old.spd", ".old.spp", ".old.spm", ".old.spk", ".old.sps", ".old.mvp" };
-const char * g_dCurExts[] = { ".sph", ".spa", ".spi", ".spd", ".spp", ".spm", ".spk", ".sps", ".mvp" };
+static const char * g_dNewExts[EXT_COUNT] = { ".new.sph", ".new.spa", ".new.spi", ".new.spd", ".new.spp", ".new.spm", ".new.spk", ".new.sps" };
+static const char * g_dOldExts[] = { ".old.sph", ".old.spa", ".old.spi", ".old.spd", ".old.spp", ".old.spm", ".old.spk", ".old.sps", ".old.mvp" };
+static const char * g_dCurExts[] = { ".sph", ".spa", ".spi", ".spd", ".spp", ".spm", ".spk", ".sps", ".mvp" };
 
 /////////////////////////////////////////////////////////////////////////////
 // MISC
@@ -7470,7 +7470,7 @@ enum SqlStmt_e
 };
 
 
-const char * g_dSqlStmts[STMT_TOTAL] =
+static const char * g_dSqlStmts[STMT_TOTAL] =
 {
 	"parse_error", "dummy", "select", "insert", "replace", "delete", "show_warnings",
 	"show_status", "show_meta", "set", "begin", "commit", "rollback", "call",
@@ -13704,7 +13704,7 @@ bool CheckConfigChanges ()
 
 		CSphVector<char> dContent;
 		char sError [ 1024 ];
-		if ( !TryToExec ( p, p+strlen(p), g_sConfigFile.cstr(), dContent, sError, sizeof(sError) ) )
+		if ( !TryToExec ( p, g_sConfigFile.cstr(), dContent, sError, sizeof(sError) ) )
 			return true;
 
 		uCRC32 = sphCRC32 ( (const BYTE*)dContent.Begin(), dContent.GetLength() );

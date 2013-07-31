@@ -913,8 +913,8 @@ struct ThreadCall_t
 	void *			m_pArg;
 	ThreadCall_t *	m_pNext;
 };
-SphThreadKey_t g_tThreadCleanupKey;
-SphThreadKey_t g_tMyThreadStack;
+static SphThreadKey_t g_tThreadCleanupKey;
+static SphThreadKey_t g_tMyThreadStack;
 
 
 #if USE_WINDOWS

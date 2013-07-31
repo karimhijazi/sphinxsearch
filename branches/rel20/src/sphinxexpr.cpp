@@ -400,7 +400,7 @@ struct Expr_Fibonacci_c : public Expr_Unary_c
 	struct _classname : public ISphExpr \
 	{ \
 		ISphExpr * m_pFirst; \
-		explicit _classname ( ISphExpr * pFirst ) : m_pFirst ( pFirst ) {}; \
+		explicit _classname ( ISphExpr * pFirst ) : m_pFirst ( pFirst ) {} \
 		~_classname () { SafeRelease ( m_pFirst ); } \
 		virtual void SetMVAPool ( const DWORD * pMvaPool ) { m_pFirst->SetMVAPool ( pMvaPool ); } \
 		virtual void SetStringPool ( const BYTE * pStrings ) { m_pFirst->SetStringPool ( pStrings ); } \

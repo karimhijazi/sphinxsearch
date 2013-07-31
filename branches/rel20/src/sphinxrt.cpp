@@ -34,7 +34,6 @@
 
 #define BINLOG_WRITE_BUFFER		256*1024
 #define BINLOG_AUTO_FLUSH		1000000
-#define BINLOG_RESTART_SIZE		128*1024*1024
 
 #if USE_64BIT
 #define WORDID_MAX				U64C(0xffffffffffffffff)
@@ -792,7 +791,7 @@ public:
 };
 
 /// TLS indexing accumulator (we disallow two uncommitted adds within one thread; and so need at most one)
-SphThreadKey_t g_tTlsAccumKey;
+static SphThreadKey_t g_tTlsAccumKey;
 
 /// binlog file view of the index
 /// everything that a given log file needs to know about an index

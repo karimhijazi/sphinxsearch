@@ -206,11 +206,21 @@ inline const	DWORD *	STATIC2DOCINFO ( const DWORD * pAttrs )	{ return STATIC2DOC
 
 /////////////////////////////////////////////////////////////////////////////
 
+extern int64_t g_iIndexerCurrentDocID;
+extern int64_t g_iIndexerCurrentHits;
+extern int64_t g_iIndexerCurrentRangeMin;
+extern int64_t g_iIndexerCurrentRangeMax;
+extern int64_t g_iIndexerPoolStartDocID;
+extern int64_t g_iIndexerPoolStartHit;
+
+/////////////////////////////////////////////////////////////////////////////
+
 /// microsecond precision timestamp
 /// current UNIX timestamp in seconds multiplied by 1000000, plus microseconds since the beginning of current second
 int64_t			sphMicroTimer ();
 
 /// Sphinx CRC32 implementation
+extern DWORD	g_dSphinxCRC32 [ 256 ];
 DWORD			sphCRC32 ( const BYTE * pString );
 DWORD			sphCRC32 ( const BYTE * pString, int iLen );
 DWORD			sphCRC32 ( const BYTE * pString, int iLen, DWORD uPrevCRC );
@@ -1080,7 +1090,7 @@ public:
 	float GetAttrFloat ( const CSphAttrLocator & tLoc ) const
 	{
 		return sphDW2F ( (DWORD)sphGetRowAttr ( tLoc.m_bDynamic ? m_pDynamic : m_pStatic, tLoc ) );
-	};
+	}
 
 	/// integer setter
 	void SetAttr ( const CSphAttrLocator & tLoc, SphAttr_t uValue )
