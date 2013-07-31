@@ -1780,7 +1780,7 @@ void RtAccum_t::CleanupDuplacates ( int iRowSize )
 		int iCount = dDocHits[iHit].m_iHitCount;
 		if ( iFrom+iCount<m_dAccum.GetLength() )
 		{
-			for ( int iDst=iFrom, iSrc=iFrom+iCount; iSrc<m_dAccum.GetLength(); iSrc++, iDst++ )
+			for ( iDst=iFrom, iSrc=iFrom+iCount; iSrc<m_dAccum.GetLength(); iSrc++, iDst++ )
 				m_dAccum[iDst] = m_dAccum[iSrc];
 		}
 		m_dAccum.Resize ( m_dAccum.GetLength()-iCount );
@@ -1792,8 +1792,8 @@ void RtAccum_t::CleanupDuplacates ( int iRowSize )
 	// clean up docinfos of duplicates
 	for ( int iDoc = dDocHits.GetLength()-1; iDoc>=0; iDoc-- )
 	{
-		int iDst = dDocHits[iDoc].m_iDocIndex*iStride;
-		int iSrc = iDst+iStride;
+		iDst = dDocHits[iDoc].m_iDocIndex*iStride;
+		iSrc = iDst+iStride;
 		while ( iSrc<m_dAccumRows.GetLength() )
 		{
 			m_dAccumRows[iDst++] = m_dAccumRows[iSrc++];
@@ -4184,7 +4184,7 @@ CSphDict * RtIndex_t::SetupStarDict ( CSphScopedPtr<CSphDict> & tContainer, CSph
 // FIXME? any chance to factor out common backend agnostic code?
 // FIXME? do we need to support pExtraFilters?
 #ifndef NDEBUG
-bool RtIndex_t::MultiQuery ( const CSphQuery * pQuery, CSphQueryResult * pResult, int iSorters, ISphMatchSorter ** ppSorters, const CSphVector<CSphFilterSettings> *, int iTag ) const
+bool RtIndex_t::MultiQuery ( const CSphQuery * pQuery, CSphQueryResult * pResult, int iSorters, ISphMatchSorter ** ppSorters, const CSphVector<CSphFilterSettings> *, int iDebugTag ) const
 #else
 bool RtIndex_t::MultiQuery ( const CSphQuery * pQuery, CSphQueryResult * pResult, int iSorters, ISphMatchSorter ** ppSorters, const CSphVector<CSphFilterSettings> *, int ) const
 #endif
@@ -4210,7 +4210,7 @@ bool RtIndex_t::MultiQuery ( const CSphQuery * pQuery, CSphQueryResult * pResult
 
 	assert ( pQuery );
 	assert ( pResult );
-	assert ( iTag==0 );
+	assert ( iDebugTag==0 );
 
 	MEMORY ( SPH_MEM_IDX_RT_MULTY_QUERY );
 
@@ -4396,16 +4396,16 @@ bool RtIndex_t::MultiQuery ( const CSphQuery * pQuery, CSphQueryResult * pResult
 	// expanding prefix in word dictionary case
 	if ( m_bEnableStar && m_bKeywordDict )
 	{
-		ExpansionContext_t tCtx;
-		tCtx.m_pWordlist = this;
-		tCtx.m_pBuf = NULL;
-		tCtx.m_pResult = pResult;
-		tCtx.m_iFD = -1;
-		tCtx.m_iMinPrefixLen = m_tSettings.m_iMinPrefixLen;
-		tCtx.m_iExpansionLimit = m_iExpansionLimit;
-		tCtx.m_bStarEnabled = true;
-		tCtx.m_bHasMorphology = m_pDict->HasMorphology();
-		tParsed.m_pRoot = sphExpandXQNode ( tParsed.m_pRoot, tCtx );
+		ExpansionContext_t tExpCtx;
+		tExpCtx.m_pWordlist = this;
+		tExpCtx.m_pBuf = NULL;
+		tExpCtx.m_pResult = pResult;
+		tExpCtx.m_iFD = -1;
+		tExpCtx.m_iMinPrefixLen = m_tSettings.m_iMinPrefixLen;
+		tExpCtx.m_iExpansionLimit = m_iExpansionLimit;
+		tExpCtx.m_bStarEnabled = true;
+		tExpCtx.m_bHasMorphology = m_pDict->HasMorphology();
+		tParsed.m_pRoot = sphExpandXQNode ( tParsed.m_pRoot, tExpCtx );
 	}
 
 	if ( !sphCheckQueryHeight ( tParsed.m_pRoot, pResult->m_sError ) )
@@ -4483,10 +4483,6 @@ bool RtIndex_t::MultiQuery ( const CSphQuery * pQuery, CSphQueryResult * pResult
 			CSphMatch tMatch;
 			tMatch.Reset ( pResult->m_tSchema.GetDynamicSize() );
 			tMatch.m_iWeight = pQuery->GetIndexWeight ( m_sIndexName.cstr() );
-
-			int iCutoff = pQuery->m_iCutoff;
-			if ( iCutoff<=0 )
-				iCutoff = -1;
 
 			ARRAY_FOREACH ( iSeg, m_pSegments )
 			{
@@ -4730,10 +4726,10 @@ bool RtIndex_t::MultiQuery ( const CSphQuery * pQuery, CSphQueryResult * pResult
 				const BYTE * pBaseString = bSegmentMatch ? m_pSegments[iStorageSrc]->m_dStrings.Begin() : dDiskStrings[ iStorageSrc-iSegCount ];
 				const DWORD * pBaseMva = bSegmentMatch ? m_pSegments[iStorageSrc]->m_dMvas.Begin() : dDiskMva[ iStorageSrc-iSegCount ];
 
-				ARRAY_FOREACH ( i, dStringGetLoc )
+				ARRAY_FOREACH ( j, dStringGetLoc )
 				{
 					DWORD uAttr = 0;
-					const SphAttr_t uOff = tMatch.GetAttr ( dStringGetLoc[i] );
+					const SphAttr_t uOff = tMatch.GetAttr ( dStringGetLoc[j] );
 					if ( uOff>0 ) // have to fix up only existed attribute
 					{
 						assert ( uOff<( I64C(1)<<32 ) ); // should be 32 bit offset
@@ -4742,25 +4738,25 @@ bool RtIndex_t::MultiQuery ( const CSphQuery * pQuery, CSphQueryResult * pResult
 						uAttr = CopyPackedString ( pBaseString + uOff, dStorageString );
 					}
 
-					const CSphAttrLocator & tSet = dStringSetLoc[i];
+					const CSphAttrLocator & tSet = dStringSetLoc[j];
 					assert ( !tSet.m_bDynamic || tSet.GetMaxRowitem() < (int)tMatch.m_pDynamic[-1] );
 					sphSetRowAttr ( tSet.m_bDynamic ? tMatch.m_pDynamic : const_cast<CSphRowitem*>( tMatch.m_pStatic ), tSet, uAttr );
 				}
 
-				ARRAY_FOREACH ( i, dMvaGetLoc )
+				ARRAY_FOREACH ( j, dMvaGetLoc )
 				{
 					DWORD uAttr = 0;
-					const DWORD * pMva = tMatch.GetAttrMVA ( dMvaGetLoc[i], pBaseMva );
+					const DWORD * pMva = tMatch.GetAttrMVA ( dMvaGetLoc[j], pBaseMva );
 					// have to fix up only existed attribute
 					if ( pMva )
 					{
-						assert ( ( tMatch.GetAttr ( dMvaGetLoc[i] ) & MVA_ARENA_FLAG )<( I64C(1)<<32 ) ); // should be 32 bit offset
-						assert ( !bSegmentMatch || (int)tMatch.GetAttr ( dMvaGetLoc[i] )<m_pSegments[iStorageSrc]->m_dMvas.GetLength() );
+						assert ( ( tMatch.GetAttr ( dMvaGetLoc[j] ) & MVA_ARENA_FLAG )<( I64C(1)<<32 ) ); // should be 32 bit offset
+						assert ( !bSegmentMatch || (int)tMatch.GetAttr ( dMvaGetLoc[j] )<m_pSegments[iStorageSrc]->m_dMvas.GetLength() );
 
 						uAttr = CopyMva ( pMva, dStorageMva );
 					}
 
-					const CSphAttrLocator & tSet = dMvaSetLoc[i];
+					const CSphAttrLocator & tSet = dMvaSetLoc[j];
 					assert ( !tSet.m_bDynamic || tSet.GetMaxRowitem() < (int)tMatch.m_pDynamic[-1] );
 					sphSetRowAttr ( tSet.m_bDynamic ? tMatch.m_pDynamic : const_cast<CSphRowitem*>( tMatch.m_pStatic ), tSet, uAttr );
 				}
@@ -4927,8 +4923,8 @@ int RtIndex_t::UpdateAttributes ( const CSphAttrUpdate & tUpd, int iIndex, CSphS
 	uint64_t uDst64 = 0;
 	ARRAY_FOREACH ( i, tUpd.m_dAttrs )
 	{
-		int iIndex = m_tSchema.GetAttrIndex ( tUpd.m_dAttrs[i].m_sName.cstr() );
-		if ( iIndex<0 )
+		int iIdx = m_tSchema.GetAttrIndex ( tUpd.m_dAttrs[i].m_sName.cstr() );
+		if ( iIdx<0 )
 		{
 			sError.SetSprintf ( "attribute '%s' not found", tUpd.m_dAttrs[i].m_sName.cstr() );
 			return -1;
@@ -4937,7 +4933,7 @@ int RtIndex_t::UpdateAttributes ( const CSphAttrUpdate & tUpd, int iIndex, CSphS
 		dBigints.Add ( tUpd.m_dAttrs[i].m_eAttrType==SPH_ATTR_BIGINT );
 
 		// forbid updates on non-int columns
-		const CSphColumnInfo & tCol = m_tSchema.GetAttr(iIndex);
+		const CSphColumnInfo & tCol = m_tSchema.GetAttr(iIdx);
 		if ( !( tCol.m_eAttrType==SPH_ATTR_BOOL || tCol.m_eAttrType==SPH_ATTR_INTEGER || tCol.m_eAttrType==SPH_ATTR_TIMESTAMP
 			|| tCol.m_eAttrType==SPH_ATTR_UINT32SET || tCol.m_eAttrType==SPH_ATTR_INT64SET
 			|| tCol.m_eAttrType==SPH_ATTR_BIGINT || tCol.m_eAttrType==SPH_ATTR_FLOAT ))
@@ -4969,13 +4965,13 @@ int RtIndex_t::UpdateAttributes ( const CSphAttrUpdate & tUpd, int iIndex, CSphS
 		bHasMva |= ( tCol.m_eAttrType==SPH_ATTR_UINT32SET || tCol.m_eAttrType==SPH_ATTR_INT64SET );
 
 		// find dupes to optimize
-		ARRAY_FOREACH ( i, dIndexes )
-			if ( dIndexes[i]==iIndex )
+		ARRAY_FOREACH ( j, dIndexes )
+			if ( dIndexes[j]==iIdx )
 			{
-				dIndexes[i] = -1;
+				dIndexes[j] = -1;
 				break;
 			}
-		dIndexes.Add ( iIndex );
+		dIndexes.Add ( iIdx );
 	}
 	assert ( dLocators.GetLength()==tUpd.m_dAttrs.GetLength() );
 

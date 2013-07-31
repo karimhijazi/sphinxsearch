@@ -262,7 +262,7 @@ int main ( int argc, char ** argv )
 			}
 
 			fprintf ( stdout, "dumping header file '%s'...\n", sDumpHeader.cstr() );
-			CSphIndex * pIndex = sphCreateIndexPhrase ( NULL, "" );
+			pIndex = sphCreateIndexPhrase ( NULL, "" );
 			pIndex->DebugDumpHeader ( stdout, sDumpHeader.cstr(), eCommand==CMD_DUMPCONFIG );
 			break;
 		}

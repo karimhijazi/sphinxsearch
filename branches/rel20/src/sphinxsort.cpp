@@ -2870,9 +2870,9 @@ ISphMatchSorter * sphCreateQueue ( const CSphQuery * pQuery, const CSphSchema & 
 
 				// usual filter
 				tExprCol.m_eStage = SPH_EVAL_PREFILTER;
-				ARRAY_FOREACH ( i, dCur )
+				ARRAY_FOREACH ( j, dCur )
 				{
-					const CSphColumnInfo & tCol = tSorterSchema.GetAttr ( dCur[i] );
+					const CSphColumnInfo & tCol = tSorterSchema.GetAttr ( dCur[j] );
 					if ( tCol.m_bWeight )
 					{
 						tExprCol.m_eStage = SPH_EVAL_PRESORT;
@@ -2885,9 +2885,9 @@ ISphMatchSorter * sphCreateQueue ( const CSphQuery * pQuery, const CSphSchema & 
 				}
 				dCur.Uniq();
 
-				ARRAY_FOREACH ( i, dCur )
+				ARRAY_FOREACH ( j, dCur )
 				{
-					CSphColumnInfo & tDep = const_cast < CSphColumnInfo & > ( tSorterSchema.GetAttr ( dCur[i] ) );
+					CSphColumnInfo & tDep = const_cast < CSphColumnInfo & > ( tSorterSchema.GetAttr ( dCur[j] ) );
 					if ( tDep.m_eStage>tExprCol.m_eStage )
 						tDep.m_eStage = tExprCol.m_eStage;
 				}

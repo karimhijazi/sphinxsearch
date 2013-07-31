@@ -5879,9 +5879,9 @@ bool MinimizeAggrResultCompat ( AggrResult_t & tRes, const CSphQuery & tQuery, b
 			{
 				bool bAdd = false;
 
-				ARRAY_FOREACH ( i, tQuery.m_dItems )
+				ARRAY_FOREACH ( j, tQuery.m_dItems )
 				{
-					const CSphQueryItem & tQueryItem = tQuery.m_dItems[i];
+					const CSphQueryItem & tQueryItem = tQuery.m_dItems[j];
 					if ( ( tQueryItem.m_sExpr.cstr() && tQueryItem.m_sExpr==tCol.m_sName )
 						|| ( tQueryItem.m_sAlias.cstr() && tQueryItem.m_sAlias==tCol.m_sName ) )
 					{
@@ -6717,14 +6717,14 @@ void SearchHandler_c::RunLocalSearches ( ISphMatchSorter * pLocalSorter, const c
 		int iNumFilters = pQuery->m_dFilters.GetLength ();
 		for ( int i=iLocal+1; i<m_dLocal.GetLength (); i++ )
 		{
-			const ServedIndex_t * pServed = UseIndex ( i );
-			if ( !pServed )
+			const ServedIndex_t * pLocServed = UseIndex ( i );
+			if ( !pLocServed )
 				continue;
 
-			if ( pServed->m_pIndex->GetKillListSize () )
+			if ( pLocServed->m_pIndex->GetKillListSize () )
 			{
 				CSphFilterSettings tKillListFilter;
-				SetupKillListFilter ( tKillListFilter, pServed->m_pIndex->GetKillList (), pServed->m_pIndex->GetKillListSize () );
+				SetupKillListFilter ( tKillListFilter, pLocServed->m_pIndex->GetKillList (), pLocServed->m_pIndex->GetKillListSize () );
 				pQuery->m_dFilters.Add ( tKillListFilter );
 				dLocked.Add ( i );
 			} else
@@ -16091,8 +16091,8 @@ int WINAPI ServiceMain ( int argc, char **argv )
 
 	// almost ready, time to start listening
 	int iBacklog = hSearchd.GetInt ( "listen_backlog", SEARCHD_BACKLOG );
-	ARRAY_FOREACH ( i, g_dListeners )
-		if ( listen ( g_dListeners[i].m_iSock, iBacklog )==-1 )
+	ARRAY_FOREACH ( j, g_dListeners )
+		if ( listen ( g_dListeners[j].m_iSock, iBacklog )==-1 )
 			sphFatal ( "listen() failed: %s", sphSockError() );
 
 	sphInfo ( "accepting connections" );
