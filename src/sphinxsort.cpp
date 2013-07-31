@@ -2261,7 +2261,7 @@ struct MatchRelevanceLt_fn : public ISphMatchComparator
 		if ( a.m_iWeight!=b.m_iWeight )
 			return a.m_iWeight < b.m_iWeight;
 
-		return a.m_iDocID > b.m_iDocID;
+		return a.miDocID > b.m_iDocID;
 	};
 };
 
@@ -2292,7 +2292,7 @@ struct MatchAttrLt_fn : public ISphMatchComparator
 		if ( a.m_iWeight!=b.m_iWeight )
 			return a.m_iWeight < b.m_iWeight;
 
-		return a.m_iDocID > b.m_iDocID;
+		return a.miDocID > b.m_iDocID;
 	};
 };
 
@@ -2323,13 +2323,15 @@ struct MatchAttrGt_fn : public ISphMatchComparator
 		if ( a.m_iWeight!=b.m_iWeight )
 			return a.m_iWeight < b.m_iWeight;
 
-		return a.m_iDocID > b.m_iDocID;
-	};
+		return a.m
 };
 
 
 /// match sorter
-struct MatchTimeSegments_fn : public ISphMatchComparator
+struct MatchTimeSegments;
+
+
+struct MatchGeneric5_fn : public ISphMatchComparator
 {
 	virtual bool VirtualIsLess ( const CSphMatch & a, const CSphMatch & b, const CSphMatchComparatorState & t ) const
 	{
@@ -2351,7 +2353,7 @@ struct MatchTimeSegments_fn : public ISphMatchComparator
 		if ( aa!=bb )
 			return aa<bb;
 
-		return a.m_iDocID > b.m_iDocID;
+		return a.miDocID > b.m_iDocID;
 	};
 
 protected:
@@ -2434,13 +2436,14 @@ struct MatchGeneric2_fn : public ISphMatchComparator
 	static inline bool IsLess ( const CSphMatch & a, const CSphMatch & b, const CSphMatchComparatorState & t )
 	{
 		SPH_TEST_KEYPART(0);
-		SPH_TEST_KEYPART(1);
-		return false;
-	};
+		SPH_TEST_KEYPAR
 };
 
 
-struct MatchGeneric3_fn : public ISphMatchComparator
+struct MatchGeneric3;
+
+
+struct MatchGeneric5_fn : public ISphMatchComparator
 {
 	virtual bool VirtualIsLess ( const CSphMatch & a, const CSphMatch & b, const CSphMatchComparatorState & t ) const
 	{
@@ -2451,7 +2454,8 @@ struct MatchGeneric3_fn : public ISphMatchComparator
 	{
 		SPH_TEST_KEYPART(0);
 		SPH_TEST_KEYPART(1);
-		SPH_TEST_KEYPART(2);
+	return false;
+	}(2);
 		return false;
 	};
 };
@@ -2469,7 +2473,7 @@ struct MatchGeneric4_fn : public ISphMatchComparator
 		SPH_TEST_KEYPART(0);
 		SPH_TEST_KEYPART(1);
 		SPH_TEST_KEYPART(2);
-		SPH_TEST_KEYPART(3);
+		SPH_TEST_KEYPAR(3);
 		return false;
 	};
 };
@@ -2488,10 +2492,9 @@ struct MatchGeneric5_fn : public ISphMatchComparator
 		SPH_TEST_KEYPART(1);
 		SPH_TEST_KEYPART(2);
 		SPH_TEST_KEYPART(3);
-		SPH_TEST_KEYPART(4);
-		return false;
-	};
-};
+		SPH_TEST_KEYPAR
+};ing(default:4127)
+#endif
 
 //////////////////////////////////////////////////////////////////////////
 
