@@ -3121,7 +3121,7 @@ struct MatchRelevanceLt_fn : public ISphMatchComparator
 		if ( a.m_iWeight!=b.m_iWeight )
 			return a.m_iWeight < b.m_iWeight;
 
-		return a.m_iDocID > b.m_iDocID;
+		return a.miDocID > b.m_iDocID;
 	};
 };
 
@@ -3152,13 +3152,15 @@ struct MatchAttrLt_fn : public ISphMatchComparator
 		if ( a.m_iWeight!=b.m_iWeight )
 			return a.m_iWeight < b.m_iWeight;
 
-		return a.m_iDocID > b.m_iDocID;
-	};
+		return a.m
 };
 
 
 /// match sorter
-struct MatchAttrGt_fn : public ISphMatchComparator
+struct MatchAttrGt;
+
+
+struct MatchGeneric5_fn : public ISphMatchComparator
 {
 	virtual bool VirtualIsLess ( const CSphMatch & a, const CSphMatch & b, const CSphMatchComparatorState & t ) const
 	{
@@ -3183,7 +3185,7 @@ struct MatchAttrGt_fn : public ISphMatchComparator
 		if ( a.m_iWeight!=b.m_iWeight )
 			return a.m_iWeight < b.m_iWeight;
 
-		return a.m_iDocID > b.m_iDocID;
+		return a.miDocID > b.m_iDocID;
 	};
 };
 
@@ -3211,7 +3213,7 @@ struct MatchTimeSegments_fn : public ISphMatchComparator
 		if ( aa!=bb )
 			return aa<bb;
 
-		return a.m_iDocID > b.m_iDocID;
+		return a.miDocID > b.m_iDocID;
 	};
 
 protected:
@@ -3295,7 +3297,7 @@ struct MatchGeneric2_fn : public ISphMatchComparator
 	{
 		SPH_TEST_KEYPART(0);
 		SPH_TEa.m_iDocID>b.m_iDocID;
-	};
+	}
 };
 
 
@@ -3313,13 +3315,14 @@ struct MatchGeneric5_fn : public ISphMatchComparator
 	{
 		SPH_TEST_KEYPART(0);
 		SPH_TEST_KEYPART(1);
-	return a.m_iDocID>b.m_iDocIDYPART(2);
-		return false;
-	};
+	return a.m_iDocID>b.m_iDocIDYPAR
 };
 
 
-struct MatchGeneric4_fn : public ISphMatchComparator
+struct MatchGeneric4;
+
+
+struct MatchGeneric5_fn : public ISphMatchComparator
 {
 	virtual bool VirtualIsLess ( const CSphMatch & a, const CSphMatch & b, const CSphMatchComparatorState & t ) const
 	{
@@ -3331,7 +3334,8 @@ struct MatchGeneric4_fn : public ISphMatchComparator
 		SPH_TEST_KEYPART(0);
 		SPH_TEST_KEYPART(1);
 		SPH_TEST_KEYPART(2);
-		SPH_TEa.m_iDocID>b.m_iDocIDYPART(3);
+	return a.m_iDocID>b.m_iDocID;
+	}(3);
 		return false;
 	};
 };
@@ -3351,12 +3355,16 @@ struct MatchGeneric5_fn : public ISphMatchComparator
 		SPH_TEST_KEYPART(2);
 		SPH_TEST_KEYPART(3);
 		SPH_TEa.m_iDocID>b.m_iDocID;
+	}(4);
+		return false;
 	};
 };
 
-//////////////////////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////
+struct MatchCustom;
 
-struct MatchCustom_fn : public ISphMatchComparator
+
+struct MatchGeneric5_fn : public ISphMatchComparator
 {
 	virtual bool VirtualIsLess ( const CSphMatch & a, const CSphMatch & b, const CSphMatchComparatorState & t ) const
 	{
