@@ -1151,7 +1151,7 @@ void ExprParser_t::Optimize ( int iNode )
 	// unary arithmetic expression with constant
 	if ( IsUnary ( pRoot ) )
 	{
-		assert ( !pRight );
+		assert ( pLeft && !pRight );
 
 		if ( IsConst ( pLeft ) )
 		{
@@ -1182,6 +1182,8 @@ void ExprParser_t::Optimize ( int iNode )
 	// arithmetic expression with constants
 	if ( IsAri(pRoot) )
 	{
+		assert ( pLeft && pRight );
+
 		// optimize fully-constant expressions
 		if ( IsConst(pLeft) && IsConst(pRight) )
 		{

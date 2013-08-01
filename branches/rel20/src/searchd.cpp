@@ -4127,6 +4127,8 @@ void CheckQuery ( const CSphQuery & tQuery, CSphString & sError )
 
 void PrepareQueryEmulation ( CSphQuery * pQuery )
 {
+	assert ( pQuery && pQuery->m_sRawQuery.cstr() );
+
 	// sort filters
 	ARRAY_FOREACH ( i, pQuery->m_dFilters )
 		pQuery->m_dFilters[i].m_dValues.Sort();
@@ -4148,7 +4150,7 @@ void PrepareQueryEmulation ( CSphQuery * pQuery )
 		return;
 
 	const char * szQuery = pQuery->m_sRawQuery.cstr ();
-	int iQueryLen = szQuery ? strlen(szQuery) : 0;
+	int iQueryLen = strlen(szQuery);
 
 	pQuery->m_sQuery.Reserve ( iQueryLen*2+8 );
 	char * szRes = (char*) pQuery->m_sQuery.cstr ();
@@ -10860,36 +10862,27 @@ struct SphinxqlReplyParser_t : public IReplyParser_t
 
 	virtual bool ParseReply ( MemInputBuffer_c & tReq, AgentConn_t &, int ) const
 	{
-		DWORD uSize = ( tReq.GetLSBDword() & 0x00FFFFFF ) - 1;
+		DWORD uSize = ( tReq.GetLSBDword() & 0x00ffffff ) - 1;
 		BYTE uCommand = tReq.GetByte();
-		int iAffected = 0;
-		int iWarns = 0;
-		int iError = 0;
-		int iInsert_id = 0;
-		CSphString sMessage;
-		switch ( uCommand )
+
+		if ( uCommand==0 )
 		{
-		case 0: // ok packet
-			iAffected = MysqlUnpack ( tReq, &uSize );
-			iInsert_id = MysqlUnpack ( tReq, &uSize );
-			iWarns = tReq.GetLSBDword();
+			*m_pUpdated += MysqlUnpack ( tReq, &uSize );
+			MysqlUnpack ( tReq, &uSize ); // insert id
+			*m_pWarns += tReq.GetLSBDword();
 			uSize -= 4;
 			if ( uSize )
-				sMessage = tReq.GetRawString ( uSize );
-			break;
-
-		case 0xff: // error packet
-			iError = tReq.GetByte() + ((int)tReq.GetByte()<<8);
+				tReq.GetRawString ( uSize ); // message
+			return true;
+		}
+		if ( uCommand==0xff )
+		{
+			tReq.GetByte(); tReq.GetByte(); // error
 			uSize -= 2;
 			if ( uSize )
-				sMessage = tReq.GetRawString ( uSize );
-			break;
-		default:
-			break;
+				tReq.GetRawString ( uSize ); // ignoring message
 		}
-
-		*m_pUpdated += iAffected;
-		return true;
+		return false;
 	}
 
 protected:
@@ -11137,6 +11130,8 @@ public:
 
 	void PutString ( const char * sMsg )
 	{
+		assert ( sMsg );
+
 		int iLen = sMsg ? strlen ( sMsg ) : 0;
 		Reserve ( 1+iLen );
 		char * pBegin = Get();

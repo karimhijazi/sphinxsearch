@@ -3111,7 +3111,7 @@ bool ISphTokenizer::EnableSentenceIndexing ( CSphString & sError )
 
 bool ISphTokenizer::EnableZoneIndexing ( CSphString & sError )
 {
-	const char sSpecials[] = { MAGIC_CODE_ZONE, 0 };
+	static const char sSpecials[] = { MAGIC_CODE_ZONE, 0 };
 	return AddSpecialsSPZ ( sSpecials, "index_zones", sError );
 }
 
@@ -4368,7 +4368,7 @@ BYTE * CSphTokenizer_SBCS::GetToken ()
 				{
 					// stray slash on a buffer end
 					// handle it as a separator
-					iCodepoint = iCode = 0;
+					iCode = 0;
 				}
 			}
 
@@ -9207,7 +9207,6 @@ bool CSphIndex_VLN::BuildMVA ( const CSphVector<CSphSource*> & dSources,
 
 			dBlockLens.Add ( pMva-pMvaPool );
 			m_tProgress.m_iAttrs += pMva-pMvaPool;
-			pMva = pMvaPool;
 		}
 	}
 
@@ -11766,9 +11765,9 @@ bool CSphIndex_VLN::MergeWords ( CSphIndex_VLN * pSrcIndex, ISphFilter * pFilter
 
 	int iWords = 0;
 	int iHitlistsDiscarded = 0;
-	while ( bDstWord || bSrcWord )
+	for ( ; bDstWord || bSrcWord; iWords++ )
 	{
-		if ( iWords==1000 )
+		if ( m_pProgress && iWords==1000 )
 		{
 			m_tProgress.m_iWords += 1000;
 			iWords = 0;
@@ -11782,7 +11781,6 @@ bool CSphIndex_VLN::MergeWords ( CSphIndex_VLN * pSrcIndex, ISphFilter * pFilter
 			// transfer documents and hits from destination
 			CSphMerger::PrepareQword<QWORDDST> ( tDstQword, tDstReader, iDstDynamic, iDstMinID, bWordDict );
 			tMerge.TransferData<QWORDDST> ( tDstQword, tDstReader.m_iWordID, tDstReader.GetWord(), this, dDstInline, pFilter );
-			iWords++;
 			bDstWord = tDstReader.Read();
 
 		} else if ( !bDstWord || ( bSrcWord && iCmp>0 ) )
@@ -11790,7 +11788,6 @@ bool CSphIndex_VLN::MergeWords ( CSphIndex_VLN * pSrcIndex, ISphFilter * pFilter
 			// transfer documents and hits from source
 			CSphMerger::PrepareQword<QWORDSRC> ( tSrcQword, tSrcReader, iSrcDynamic, iSrcMinID, bWordDict );
 			tMerge.TransferData<QWORDSRC> ( tSrcQword, tSrcReader.m_iWordID, tSrcReader.GetWord(), pSrcIndex, dSrcInline, NULL );
-			iWords++;
 			bSrcWord = tSrcReader.Read();
 
 		} else // merge documents and hits inside the word
@@ -11908,15 +11905,17 @@ bool CSphIndex_VLN::MergeWords ( CSphIndex_VLN * pSrcIndex, ISphFilter * pFilter
 			// next word
 			bDstWord = tDstReader.Read();
 			bSrcWord = tSrcReader.Read();
-			iWords++;
 		}
 	}
 
 	m_tStats.m_iTotalDocuments += pSrcIndex->m_tStats.m_iTotalDocuments;
 	m_tStats.m_iTotalBytes += pSrcIndex->m_tStats.m_iTotalBytes;
 
-	m_tProgress.m_iWords += iWords;
-	m_pProgress ( &m_tProgress, false );
+	if ( m_pProgress )
+	{
+		m_tProgress.m_iWords += iWords;
+		m_pProgress ( &m_tProgress, false );
+	}
 
 	if ( iHitlistsDiscarded )
 		m_sLastWarning.SetSprintf ( "discarded hitlists for %u words", iHitlistsDiscarded );
@@ -15715,8 +15714,7 @@ int CSphIndex_VLN::DebugCheck ( FILE * fp )
 			iDoclistOffset = rdDict.UnzipOffset();
 			iDictDocs = rdDict.UnzipInt();
 			iDictHits = rdDict.UnzipInt();
-			int iHint = ( iDictDocs>=DOCLIST_HINT_THRESH ) ? rdDict.GetByte() : 0;
-			iHint = DoclistHintUnpack ( iDictDocs, (BYTE)iHint );
+			DoclistHintUnpack ( iDictDocs, ( iDictDocs>=DOCLIST_HINT_THRESH ) ? rdDict.GetByte() : 0 );
 		} else
 		{
 			// finish reading the entire entry
