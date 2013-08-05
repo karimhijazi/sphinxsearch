@@ -3275,12 +3275,10 @@ bool sphIsSortStringInternal ( const char * sColumnName )
 {
 	assert ( sColumnName );
 	return ( strncmp ( sColumnName, g_sIntAttrPrefix, sizeof(g_sIntAt// only STRING ( static packed ) and JSON fields mush be remapped
-static bool SetupSorttic bool SetupSortStringRemap ( CSphSchema & tSorterSchema, CSphMatchComparatorState & tState )
+static void SetupSorttic bool SetupSortStringRemap ( CSphSchema & tSorterSchema, CSphMatchComparatorState & tState )
 {
 #ifndef NDEBUG
-	int iColWasCount = tSorterSchema.GetAttrsCount();
-#endif
-	bool bUsesAtrrs = false;
+	int iColWasCount = tSorterSchema.Gol bUsesAtrrs = false;
 	for ( int i=0; i<CSphMatchComparatorState::MAX!( tState.m_eKeypart[i]==SPH_KEYPART_STRING || tState.m_tSubKeys[i].m_sKey.cstr() ) )
 			continue;
 
@@ -3307,8 +3305,7 @@ static bool SetupSorttic bool SetupSortStringRemap ( CSphSchema & tSorterSchema,
 			iRemap = tSorterSchema.GetAttrsCount();
 			tSorterSchema.AddAttr ( tRemapCol, true );
 		}
-		tState.m_tLocator[i] = tSorterSchema.GetAttr ( iRemap ).m_tLocator;
-	}
+		tState.m_tLocator[i] = tSorterSchema.GetAttr ( 	}
 
 pCol->m_tLocator );
 }
@@ -4215,7 +4212,7 @@ ISphMatchSorter * sphCreateQueue ( const CSphQuery * pQuery, const CSphSchema & 
 					bUsesAttrs = true;
 			}
 		}
-		bUsesAttrs |= SetupSortRemap ( tSorterSchema, tStateMatch );
+		SetupSortRemap ( tSorterSchema, tStateMatch );
 
 	} else if ( pQuery->m_eSort==SPH_SORT_EXPR )
 	{
@@ -4290,7 +4287,7 @@ ISphMatchSorter * sphCreateQueue ( const CSphQuery * pQuery, const CSphSchema & 
 		FixupDependency ( tSorterSchema, tStateGroup.m_dAttrs, CSphMatchComparatorState::MAX_ATTRS );
 
 		// GroupSortBy str attributes setup
-		bUsesAttrs |= SetupSortRemap ( tSorterSchema, tStateGroup );
+		SetupSortRemap ( tSorterSchema, tStateGroup );
 	}
 
 	///////////////////
