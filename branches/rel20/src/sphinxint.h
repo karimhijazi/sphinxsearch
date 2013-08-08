@@ -1246,7 +1246,6 @@ ISphExpr *		sphSortSetupExpr ( const CSphString & sName, const CSphSchema & tInd
 bool			sphSortGetStringRemap ( const CSphSchema & tSorterSchema, const CSphSchema & tIndexSchema, CSphVector<SphStringSorterRemap_t> & dAttrs );
 bool			sphIsSortStringInternal ( const char * sColumnName );
 
-void			sphCheckWordStats ( const SmallStringHash_T<CSphQueryResultMeta::WordStat_t> & hDst, const SmallStringHash_T<CSphQueryResultMeta::WordStat_t> & hSrc, const char * sIndex, CSphString & sWarning );
 bool			sphCheckQueryHeight ( const struct XQNode_t * pRoot, CSphString & sError );
 void			sphTransformExtendedQuery ( XQNode_t ** ppNode );
 
@@ -1262,6 +1261,17 @@ void			SaveTokenizerSettings ( CSphWriter & tWriter, ISphTokenizer * pTokenizer 
 void			LoadTokenizerSettings ( CSphReader & tReader, CSphTokenizerSettings & tSettings, DWORD uVersion, CSphString & sWarning );
 void			SaveDictionarySettings ( CSphWriter & tWriter, CSphDict * pDict, bool bForceWordDict );
 void			LoadDictionarySettings ( CSphReader & tReader, CSphDictSettings & tSettings, DWORD uVersion, CSphString & sWarning );
+
+
+// all indexes should produce same terms for same query
+struct SphWordStatChecker_t
+{
+	SphWordStatChecker_t () {};
+	void Set ( const SmallStringHash_T<CSphQueryResultMeta::WordStat_t> & hStat );
+	void DumpDiffer ( const SmallStringHash_T<CSphQueryResultMeta::WordStat_t> & hStat, const char * sIndex, CSphString & sWarning );
+
+	CSphVector<uint64_t> m_dSrcWords;
+};
 
 
 int sphDictCmp ( const char * pStr1, int iLen1, const char * pStr2, int iLen2 );
