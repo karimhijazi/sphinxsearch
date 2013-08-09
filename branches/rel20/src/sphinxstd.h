@@ -799,7 +799,8 @@ public:
 	/// resize
 	void Resize ( int iNewLength )
 	{
-		if ( (unsigned int)iNewLength>=(unsigned int)m_iLength )
+		assert ( iNewLength>=0 );
+		if ( iNewLength>=m_iLength )
 			Reserve ( iNewLength );
 		m_iLength = iNewLength;
 	}
