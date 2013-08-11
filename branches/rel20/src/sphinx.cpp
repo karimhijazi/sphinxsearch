@@ -6685,6 +6685,7 @@ CSphIndexSettings::CSphIndexSettings ()
 	, m_eHitFormat			( SPH_HIT_FORMAT_PLAIN )
 	, m_bHtmlStrip			( false )
 	, m_eHitless			( SPH_HITLESS_NONE )
+	, m_bVerbose			( false )
 {
 }
 
@@ -10940,7 +10941,7 @@ int CSphIndex_VLN::Build ( const CSphVector<CSphSource*> & dSources, int iMemory
 
 							DWORD iMvaCount = rdMva.GetDword();
 							tCurInfo.m_dMVA[i].Reserve ( iMvaCount );
-							while ( iMvaCount-- )
+							for ( ; iMvaCount; iMvaCount-- )
 							{
 								tCurInfo.m_dMVA[i].Add ( rdMva.GetDword() );
 							}
