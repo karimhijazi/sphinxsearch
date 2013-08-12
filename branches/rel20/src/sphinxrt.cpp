@@ -1054,14 +1054,14 @@ public:
 	virtual int					GetKillListSize () const			{ return 0; }
 	virtual bool				HasDocid ( SphDocID_t ) const		{ assert ( 0 ); return false; }
 
-	virtual int					Build ( const CSphVector<CSphSource*> & dSources, int iMemoryLimit, int iWriteBuffer ) { return 0; }
-	virtual bool				Merge ( CSphIndex * pSource, CSphVector<CSphFilterSettings> & dFilters, bool bMergeKillLists ) { return false; }
+	virtual int					Build ( const CSphVector<CSphSource*> & , int , int ) { return 0; }
+	virtual bool				Merge ( CSphIndex * , CSphVector<CSphFilterSettings> & , bool ) { return false; }
 
 	virtual bool				Prealloc ( bool bMlock, bool bStripPath, CSphString & sWarning );
 	virtual void				Dealloc () {}
 	virtual bool				Preread ();
-	virtual void				SetBase ( const char * sNewBase ) {}
-	virtual bool				Rename ( const char * sNewBase ) { return true; }
+	virtual void				SetBase ( const char * ) {}
+	virtual bool				Rename ( const char * ) { return true; }
 	virtual bool				Lock () { return true; }
 	virtual void				Unlock () {}
 	virtual bool				Mlock () { return true; }
@@ -1072,9 +1072,9 @@ public:
 	virtual bool				SaveAttributes ();
 	virtual DWORD				GetAttributeStatus () const { return m_uDiskAttrStatus; }
 
-	virtual void				DebugDumpHeader ( FILE * fp, const char * sHeaderName, bool bConfig ) {}
-	virtual void				DebugDumpDocids ( FILE * fp ) {}
-	virtual void				DebugDumpHitlist ( FILE * fp, const char * sKeyword, bool bID ) {}
+	virtual void				DebugDumpHeader ( FILE * , const char * , bool ) {}
+	virtual void				DebugDumpDocids ( FILE * ) {}
+	virtual void				DebugDumpHitlist ( FILE * , const char * , bool ) {}
 	virtual int					DebugCheck ( FILE * fp );
 #if USE_WINDOWS
 #pragma warning(pop)
