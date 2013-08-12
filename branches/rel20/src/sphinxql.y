@@ -27,6 +27,7 @@
 %token	TOK_AVG
 %token	TOK_BEGIN
 %token	TOK_BETWEEN
+%token	TOK_BIGINT
 %token	TOK_BY
 %token	TOK_CALL
 %token	TOK_COLLATION
@@ -925,6 +926,7 @@ create_function:
 
 udf_type:
 	TOK_INT			{ $$ = SPH_ATTR_INTEGER; }
+	| TOK_BIGINT	{ $$ = SPH_ATTR_BIGINT; }
 	| TOK_FLOAT		{ $$ = SPH_ATTR_FLOAT; }
 	;
 

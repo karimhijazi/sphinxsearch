@@ -1554,7 +1554,7 @@ public:
 			return 0;
 		FillArgs ( tMatch );
 		UdfInt_fn pFn = (UdfInt_fn) m_pCall->m_pUdf->m_fnFunc;
-		return (int) pFn ( &m_pCall->m_tInit, &m_pCall->m_tArgs, &m_bError );
+		return (int64_t) pFn ( &m_pCall->m_tInit, &m_pCall->m_tArgs, &m_bError );
 	}
 
 	virtual int IntEval ( const CSphMatch & tMatch ) const { return (int) Int64Eval ( tMatch ); }
