@@ -1448,10 +1448,16 @@ public:
 		}
 
 		// both source and destination present? append source to destination
+		// note that it gotta be manual copying here, as SetSprintf (currently) comes with a 1K limit
 		assert ( sDst && sSrc );
-		CSphString sNew;
-		sNew.SetSprintf ( "%s,%s", sDst, sSrc );
-		pDst->SetAttr ( m_tLoc, (SphAttr_t)sNew.Leak() );
+		int iSrc = strlen ( sSrc );
+		int iDst = strlen ( sDst );
+		char * sNew = new char [ iSrc+iDst+2 ]; // OPTIMIZE? careful pre-reserve and/or realloc would be even faster
+		memcpy ( sNew, sDst, iDst );
+		sNew [ iDst ] = ',';
+		memcpy ( sNew+iDst+1, sSrc, iSrc );
+		sNew [ iSrc+iDst+1 ] = '\0';
+		pDst->SetAttr ( m_tLoc, (SphAttr_t)sNew );
 		SafeDelete ( sDst );
 	}
 };
@@ -3837,9 +3843,8 @@ float ExprGeodist_t::Eval ( const CSphMatch & tMatch ) const
 // PUBLIC FUNCTIONS (FACTORY AND FLATTENING)
 //////////////////////////////////////////////////////////////////////////
 
-//////////////////////
-
-static CSphGrouper * sphCreateGrouperString ( const CSphAttrLocator & tLoc, ESphstatic CSphGrouper * sphCreateGrouperMulti ( const CSphVector<CSphAttrLocator> & dLocators, const CSphVector<ESphAttr> & dAttrTypes,
+static CSphGrouper * sphCreateGrouperString ( const CSphAttrLocator & tLoc, ESphCollation eCollation );
+static CSphGrouper * sphCreateGrouperMulti ( const CSphVector<CSphAttrLocator> & dLocators, const CSphVector<ESphAttr> & dAttrTypes,
 											const CSphVector<ISphExpr *> & dJsonKeys, ESphCollation eCollation );
 
 static bool SetupGroupbySettings ( const CSphQuery * pQuery, const ISphSchema & tSchema,
