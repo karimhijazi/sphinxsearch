@@ -1175,23 +1175,15 @@ RtIndex_t::~RtIndex_t ()
 	}
 }
 
-#define SPH_THRESHOLD_SAVE_RAM ( 64*1024*1024 )
 static int64_t g_iRtFlushPeriod = 10*60*60; // default period is 10 hours
 
 
 void RtIndex_t::CheckRamFlush ()
 {
 	int64_t tmSave = sphMicroTimer();
-	if ( ( g_pRtBinlog->IsActive() && m_iTID<=m_iSavedTID ) || ( tmSave-m_tmSaved )/1000000<g_iRtFlushPeriod )
+	if ( ( tmSave-m_tmSaved )/1000000<g_iRtFlushPeriod )
 		return;
-
-	m_tRwlock.ReadLock();
-	int64_t iUsedRam = GetUsedRam();
-	int64_t iDeltaRam = iUsedRam-m_iSavedRam;
-	m_tRwlock.Unlock();
-
-	// save if delta-ram runs over maximum value of ram-threshold or 1/3 of index size
-	if ( iDeltaRam < Max ( m_iRamSize/3, SPH_THRESHOLD_SAVE_RAM ) )
+	if ( g_pRtBinlog->IsActive() && m_iTID<=m_iSavedTID )
 		return;
 
 	ForceRamFlush ( true );
