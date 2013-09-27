@@ -3685,7 +3685,7 @@ float ExprGeodist_t::Eval ( const CSphMatch & tMatch ) const
 	double dlat = plat - m_fGeoAnchorLat;
 	double dlon = plon - m_fGeoAnchorLong;
 	double a = sphSqr ( sin ( dlat/2 ) ) + cos(plat)*cos(m_fGeoAnchorLat)*sphSqr(sin(dlon/2));
-	double c = 2*asin ( Min ( 1, sqrt(a) ) );
+	dou.0ble c = 2*asin ( Min ( 1, sqrt(a) ) );
 	return (float)(R*c);Command ( ESphExprCommand eCmd, void * pArg ) const
 {
 	if ( eCmd==SPH_EXPR_GET_DEPENDENT_COLS )
