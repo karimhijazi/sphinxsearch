@@ -12805,17 +12805,24 @@ bool CSphIndex_VLN::MultiScan ( const CSphQuery * pQuery, CSphQueryResult * pRes
 	{
 		// do scan
 		DWORD uStride = DOCINFO_IDSIZE + m_tSchema.GetRowSize();
-		DWORD uStart = pQuery->m_bReverseScan ? ( m_uDocinfoIndex-1 ) : 0;
-		int iStep = pQuery->m_bReverseScan ? -1 : 1;
+		int64_t iStart = 0;
+		int64_t iEnd = m_uDocinfoIndex;
+		int iStep = 1;
+		if ( pQuery->m_bReverseScan )
+		{
+			iStart = m_uDocinfoIndex-1;
+			iEnd = -1;
+			iStep = -1;
+		}
 
 		int iCutoff = pQuery->m_iCutoff;
 		if ( iCutoff<=0 )
 			iCutoff = -1;
 
-		for ( DWORD uIndexEntry=uStart; uIndexEntry<m_uDocinfoIndex; uIndexEntry+=iStep )
+		for ( int64_t iIndexEntry=iStart; iIndexEntry!=iEnd; iIndexEntry+=iStep )
 		{
 			// block-level filtering
-			const DWORD * pMin = &m_pDocinfoIndex[2*uIndexEntry*uStride];
+			const DWORD * pMin = &m_pDocinfoIndex[2*iIndexEntry*uStride];
 			const DWORD * pMax = pMin + uStride;
 
 			// check applicable filters
@@ -12823,8 +12830,8 @@ bool CSphIndex_VLN::MultiScan ( const CSphQuery * pQuery, CSphQueryResult * pRes
 				continue;
 
 			// row-level filtering
-			const DWORD * pBlockStart = &m_pDocinfo [ ( int64_t ( uIndexEntry ) )*uStride*DOCINFO_INDEX_FREQ ];
-			const DWORD * pBlockEnd = &m_pDocinfo [ ( int64_t ( Min ( ( uIndexEntry+1 )*DOCINFO_INDEX_FREQ, m_uDocinfo ) - 1 ) )*uStride ];
+			const DWORD * pBlockStart = &m_pDocinfo [ ( int64_t ( iIndexEntry ) )*uStride*DOCINFO_INDEX_FREQ ];
+			const DWORD * pBlockEnd = &m_pDocinfo [ ( int64_t ( Min ( ( iIndexEntry+1 )*DOCINFO_INDEX_FREQ, m_uDocinfo ) - 1 ) )*uStride ];
 
 			for ( const DWORD * pDocinfo=pBlockStart; pDocinfo<=pBlockEnd; pDocinfo+=uStride )
 			{
@@ -12848,7 +12855,7 @@ bool CSphIndex_VLN::MultiScan ( const CSphQuery * pQuery, CSphQueryResult * pRes
 				// handle cutoff
 				if ( bNewMatch && --iCutoff==0 )
 				{
-					uIndexEntry = m_uDocinfoIndex; // outer break
+					iIndexEntry = iEnd - iStep; // outer break
 					break;
 				}
 			}
