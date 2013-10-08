@@ -763,13 +763,6 @@ to be non-letters and will be treated as word separators when indexing
 or searching through this index.
 </para>
 <para>
-Note that while default tables do not include space character
-(ASCII code 0x20, Unicode U+0020) as a letter, it's in fact
-<emphasis>perfectly legal</emphasis> to do so. This can be
-useful, for instance, for indexing tag clouds, so that space-separated
-word sets would index as a <emphasis>single</emphasis> search query term.
-</para>
-<para>
 Default tables currently include English and Russian characters.
 Please do submit your tables for other languages!
 </para>
