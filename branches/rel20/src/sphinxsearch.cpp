@@ -4910,7 +4910,7 @@ public:
 	int					m_iFields;
 	const int *			m_pWeights;
 	DWORD				m_uDocBM25;
-	DWORD				m_uMatchedFields;
+	CSphBitvec			m_tMatchedFields;
 	int					m_iCurrentField;
 	DWORD				m_uHitCount[SPH_MAX_FIELDS];
 	DWORD				m_uWordCount[SPH_MAX_FIELDS];
@@ -5044,6 +5044,27 @@ struct Expr_IntPtr_c : public ISphExpr
 };
 
 
+/// per-document field mask factor
+struct Expr_FieldMask_c : public ISphExpr
+{
+	const CSphBitvec & m_tFieldMask;
+
+	explicit Expr_FieldMask_c ( const CSphBitvec & tFieldMask )
+		: m_tFieldMask ( tFieldMask )
+	{}
+
+	float Eval ( const CSphMatch & ) const
+	{
+		return (float)*m_tFieldMask.Begin();
+	}
+
+	int IntEval ( const CSphMatch & ) const
+	{
+		return (int)*m_tFieldMask.Begin();
+	}
+};
+
+
 /// function that sums sub-expressions over matched fields
 struct Expr_Sum_c : public ISphExpr
 {
@@ -5059,12 +5080,15 @@ struct Expr_Sum_c : public ISphExpr
 	{
 		m_pState->m_iCurrentField = 0;
 		float fRes = 0;
-		DWORD uMask = m_pState->m_uMatchedFields;
-		while ( uMask )
+		const CSphBitvec & tFields = m_pState->m_tMatchedFields;
+		int iBits = tFields.BitCount();
+		while ( iBits )
 		{
-			if ( uMask & 1 )
+			if ( tFields.BitGet ( m_pState->m_iCurrentField ) )
+			{
 				fRes += m_pArg->Eval ( tMatch );
-			uMask >>= 1;
+				iBits--;
+			}
 			m_pState->m_iCurrentField++;
 		}
 		return fRes;
@@ -5074,12 +5098,15 @@ struct Expr_Sum_c : public ISphExpr
 	{
 		m_pState->m_iCurrentField = 0;
 		int iRes = 0;
-		DWORD uMask = m_pState->m_uMatchedFields;
-		while ( uMask )
+		const CSphBitvec & tFields = m_pState->m_tMatchedFields;
+		int iBits = tFields.BitCount();
+		while ( iBits )
 		{
-			if ( uMask & 1 )
+			if ( tFields.BitGet ( m_pState->m_iCurrentField ) )
+			{
 				iRes += m_pArg->IntEval ( tMatch );
-			uMask >>= 1;
+				iBits--;
+			}
 			m_pState->m_iCurrentField++;
 		}
 		return iRes;
@@ -5177,7 +5204,7 @@ public:
 
 			case XRANK_BM25:				return new Expr_IntPtr_c ( &m_pState->m_uDocBM25 );
 			case XRANK_MAX_LCS:				return new Expr_GetIntConst_c ( m_pState->m_iMaxLCS );
-			case XRANK_FIELD_MASK:			return new Expr_IntPtr_c ( &m_pState->m_uMatchedFields );
+			case XRANK_FIELD_MASK:			return new Expr_FieldMask_c ( m_pState->m_tMatchedFields );
 			case XRANK_QUERY_WORD_COUNT:	return new Expr_GetIntConst_c ( m_pState->m_iQueryWordCount );
 			case XRANK_DOC_WORD_COUNT:		return new Expr_IntPtr_c ( &m_pState->m_uDocWordCount );
 
@@ -5308,7 +5335,7 @@ bool RankerState_Expr_fn::Init ( int iFields, const int * pWeights, ExtRanker_c 
 	m_iFields = iFields;
 	m_pWeights = pWeights;
 	m_uDocBM25 = 0;
-	m_uMatchedFields = 0;
+	m_tMatchedFields.Init ( iFields );
 	m_iCurrentField = 0;
 	memset ( m_uHitCount, 0, sizeof(m_uHitCount) );
 	memset ( m_uWordCount, 0, sizeof(m_uWordCount) );
@@ -5395,7 +5422,7 @@ void RankerState_Expr_fn::Update ( const ExtHit_t * pHlist )
 
 	// update other stuff
 	m_uMatchMask[uField] |= ( 1<<(pHlist->m_uQuerypos-1) );
-	m_uMatchedFields |= ( 1UL<<uField );
+	m_tMatchedFields.BitSet ( uField );
 
 	// keywords can be duplicated in the query, so we need this extra check
 	if ( m_tKeywordMask.BitGet ( pHlist->m_uQuerypos ) )
@@ -5454,7 +5481,7 @@ DWORD RankerState_Expr_fn::Finalize ( const CSphMatch & tMatch )
 		m_iMinBestSpanPos[i] = 0;
 		m_iMaxWindowHits[i] = 0;
 	}
-	m_uMatchedFields = 0;
+	m_tMatchedFields.Clear();
 	m_uExactHit = 0;
 	m_uDocWordCount = 0;
 	m_dWindow.Resize ( 0 );
