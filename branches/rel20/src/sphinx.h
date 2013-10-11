@@ -1623,6 +1623,9 @@ protected:
 	FILE *					m_fpDumpRows;
 	int						m_iPlainFieldsLength;
 
+	CSphVector<SphDocID_t>	m_dAllIds;				///< used for joined fields FIXME! unlimited RAM use
+	bool					m_bIdsSorted;			///< we sort array to use binary search
+
 protected:
 	struct CSphBuildHitsState_t
 	{
