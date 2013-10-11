@@ -10514,7 +10514,19 @@ int CSphIndex_VLN::Build ( const CSphVector<CSphSource*> & dSources, int iMemory
 		// fetch joined fields
 		if ( bGotJoined )
 		{
-			SphDocID_t uLastID = 0;
+			// flush tail of regular hits
+			int iHits = pHits - &dHits[0];
+			if ( iDictSize && m_pDict->HitblockGetMemUse() && iHits )
+			{
+				sphSort ( &dHits[0], iHits, CmpHit_fn() );
+				m_pDict->HitblockPatch ( &dHits[0], iHits );
+				pHits = &dHits[0];
+				m_tProgress.m_iHitsTotal += iHits;
+				dHitBlocks.Add ( cidxWriteRawVLB ( fdHits.GetFD(), &dHits[0], iHits, NULL, 0, 0 ) );
+				if ( dHitBlocks.Last()<0 )
+					return 0;
+				m_pDict->HitblockReset ();
+			}
 
 			for ( ;; )
 			{
@@ -10534,59 +10546,26 @@ int CSphIndex_VLN::Build ( const CSphVector<CSphSource*> & dSources, int iMemory
 				if ( !pSource->m_tDocInfo.m_iDocID )
 					break;
 
-				// filter and store hits
-				for ( const CSphWordHit * pHit = pJoinedHits->First(); pHit<=pJoinedHits->Last(); pHit++ )
-				{
-					// flush if needed
-					if ( pHits>=pHitsMax )
-					{
-						// sort hits
-						int iHits = pHits - dHits;
-						{
-							PROFILE ( sort_hits );
-							sphSort ( &dHits[0], iHits, CmpHit_fn() );
-							m_pDict->HitblockPatch ( &dHits[0], iHits );
-						}
-						pHits = dHits;
-						m_tProgress.m_iHitsTotal += iHits;
+				int iJoinedHits = pJoinedHits->Length();
+				memcpy ( pHits, pJoinedHits->First(), iJoinedHits*sizeof(CSphWordHit) );
+				pHits += iJoinedHits;
 
-						// we're not inlining, so only flush hits, docs are flushed independently
-						dHitBlocks.Add ( cidxWriteRawVLB ( fdHits.GetFD(), dHits, iHits,
-							NULL, 0, 0 ) );
+				// check if we need to flush
+				if ( pHits<pHitsMax && !( iDictSize && m_pDict->HitblockGetMemUse() > iDictSize ) )
+					continue;
 
-						if ( dHitBlocks.Last()<0 )
-							return 0;
-					}
+				// store hits
+				int iHits = pHits - &dHits[0];
+				sphSort ( &dHits[0], iHits, CmpHit_fn() );
+				m_pDict->HitblockPatch ( &dHits[0], iHits );
 
-					// filter
-					SphDocID_t uHitID = pHit->m_iDocID;
-					if ( uHitID!=uLastID )
-						uLastID = uHitID;
+				pHits = &dHits[0];
+				m_tProgress.m_iHitsTotal += iHits;
 
-					// copy next hit
-					*pHits++ = *pHit;
-				}
-
-				// reset keywords only after all collected hits processed
-				if ( iDictSize && m_pDict->HitblockGetMemUse()>iDictSize )
-				{
-					int iHits = pHits - dHits;
-					{
-						PROFILE ( sort_hits );
-						sphSort ( &dHits[0], iHits, CmpHit_fn() );
-						m_pDict->HitblockPatch ( &dHits[0], iHits );
-					}
-					pHits = dHits;
-					m_tProgress.m_iHitsTotal += iHits;
-					if ( iHits )
-					{
-						dHitBlocks.Add ( cidxWriteRawVLB ( fdHits.GetFD(), dHits, iHits, NULL, 0, 0 ) );
-						if ( dHitBlocks.Last()<0 )
-							return 0;
-					}
-
-					m_pDict->HitblockReset ();
-				}
+				dHitBlocks.Add ( cidxWriteRawVLB ( fdHits.GetFD(), &dHits[0], iHits, NULL, 0, 0 ) );
+				if ( dHitBlocks.Last()<0 )
+					return 0;
+				m_pDict->HitblockReset ();
 			}
 		}
 
