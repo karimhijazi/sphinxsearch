@@ -5076,6 +5076,11 @@ struct Expr_Sum_c : public ISphExpr
 		, m_pArg ( pArg )
 	{}
 
+	~Expr_Sum_c()
+	{
+		SafeDelete ( m_pArg );
+	}
+
 	float Eval ( const CSphMatch & tMatch ) const
 	{
 		m_pState->m_iCurrentField = 0;
