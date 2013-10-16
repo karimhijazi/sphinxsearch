@@ -3769,8 +3769,7 @@ static bool SetupGroupbySettings ( const CSphQuery * pQuery, const ISphSchema & 
 			dLocators.Add ( tSchema.GetAttr ( iAttr ).m_tLocator );
 			dAttrTypes.Add ( eType );
 
-			bool bUsesWeight = false;
-			dJsonKeys.Add ( bJson ? sphExprParse ( dGroupBy[i].cstr(), tSchema, NULL, &bUsesWeight, sError, NULL ): NULL );
+			dJsonKeys.Add ( bJson ? sphExprParse ( dGroupBy[i].cstr(), tSchema, NULL, NULL, sError, NULL ): NULL );
 		}
 
 		tSettings.m_pGrouper = sphCreateGrouperMulti ( dLocators, dAttrTypes, dJsonKeys, pQuery->m_eCollation );
@@ -3797,8 +3796,7 @@ static bool SetupGroupbySettings ( const CSphQuery * pQuery, const ISphSchema & 
 		}
 
 		// FIXME! handle collations here?
-		bool bUsesWeight = false;
-		ISphExpr * pExpr = sphExprParse ( pQuery->m_sGroupBy.cstr(), tSchema, NULL, &bUsesWeight, sError, NULL );
+		ISphExpr * pExpr = sphExprParse ( pQuery->m_sGroupBy.cstr(), tSchema, NULL, NULL, sError, NULL );
 		tSettings.m_pGrouper = new CSphGrouperJson ( tSchema.GetAttr(iAttr).m_tLocator, pExpr );
 
 	} else if ( bImplicit )
