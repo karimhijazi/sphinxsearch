@@ -486,57 +486,70 @@ public:
 /// collector for UPDATE statement
 class CSphUpdateQueue : public CSphMatchQueueTraits
 {
-	CSphAttrUpdateEx *	m_pUpdate;
-	bool				m_bIgnoreNonexistent;
-	bool				m_bStrict;
+	CSphAttrUpdate		m_tWorkSet;
+	CSphIndex *			m_pIndex;
+	CSphString *		m_pError;
+	CSphString *		m_pWarning;
+	int *				m_pAffected;
+
 private:
 	void DoUpdate()
 	{
 		if ( !m_iUsed )
 			return;
 
-		CSphAttrUpdate tSet; // FIXME? OPTIMIZE?
-		tSet.m_bIgnoreNonexistent = m_bIgnoreNonexistent;
-		tSet.m_bStrict = m_bStrict;
-		tSet.m_dAttrs = m_pUpdate->m_pUpdate->m_dAttrs;
-		tSet.m_dTypes = m_pUpdate->m_pUpdate->m_dTypes;
-		tSet.m_dPool = m_pUpdate->m_pUpdate->m_dPool;
-		tSet.m_dRowOffset.Resize ( m_iUsed );
-		if ( !DOCINFO2ID ( STATIC2DOCINFO ( m_pData->m_pStatic ) ) ) // if static attrs were copied, so, they actually dynamic
+		m_tWorkSet.m_dRowOffset.Resize ( m_iUsed );
+		m_tWorkSet.m_dDocids.Resize ( m_iUsed );
+		m_tWorkSet.m_dRows.Resize ( m_iUsed );
+
+		ARRAY_FOREACH ( i, m_tWorkSet.m_dDocids )
 		{
-			tSet.m_dDocids.Resize ( m_iUsed );
-			ARRAY_FOREACH ( i, tSet.m_dDocids )
+			m_tWorkSet.m_dRowOffset[i] = 0;
+			m_tWorkSet.m_dDocids[i] = 0;
+			m_tWorkSet.m_dRows[i] = NULL;
+			if ( !DOCINFO2ID ( STATIC2DOCINFO ( m_pData[i].m_pStatic ) ) ) // if static attributes were copied, so, they actually dynamic
 			{
-				tSet.m_dDocids[i] = m_pData[i].m_iDocID;
-				tSet.m_dRowOffset[i] = 0;
-			}
-		} else // static attrs points to the active indexes - so, no lookup, 5 times faster update.
-		{
-			tSet.m_dRows.Resize ( m_iUsed );
-			ARRAY_FOREACH ( i, tSet.m_dRows )
+				m_tWorkSet.m_dDocids[i] = m_pData[i].m_iDocID;
+			} else // static attributes points to the active indexes - so, no lookup, 5 times faster update.
 			{
-				tSet.m_dRows[i] = m_pData[i].m_pStatic - ( sizeof(SphDocID_t) / sizeof(CSphRowitem) );
-				tSet.m_dRowOffset[i] = 0;
+				m_tWorkSet.m_dRows[i] = m_pData[i].m_pStatic - ( sizeof(SphDocID_t) / sizeof(CSphRowitem) );
 			}
 		}
 
-		m_pUpdate->m_iAffected += m_pUpdate->m_pIndex->UpdateAttributes ( tSet, -1, *m_pUpdate->m_pError, *m_pUpdate->m_pWarning );
+		*m_pAffected += m_pIndex->UpdateAttributes ( m_tWorkSet, -1, *m_pError, *m_pWarning );
 		m_iUsed = 0;
-
-		tSet.m_dAttrs.Resize(0); // do not free what is not yours
 	}
 public:
 	/// ctor
 	CSphUpdateQueue ( int iSize, CSphAttrUpdateEx * pUpdate, bool bIgnoreNonexistent, bool bStrict )
 		: CSphMatchQueueTraits ( iSize, true )
-		, m_pUpdate ( pUpdate )
-		, m_bIgnoreNonexistent ( bIgnoreNonexistent )
-		, m_bStrict ( bStrict )
-	{tor ( m_tMvaLocator );
+	{
+		m_tWorkSet.m_dRowOffset.Reserve ( m_iSize );
+		m_tWorkSet.m_dDocids.Reserve ( m_iSize );
+		m_tWorkSet.m_dRows.Reserve ( m_iSize );
+
+		m_tWorkSet.m_bIgnoreNonexistent = bIgnoreNonexistent;
+		m_tWorkSet.m_bStrict = bStrict;
+		m_tWorkSet.m_dTypes = pUpdate->m_pUpdate->m_dTypes;
+		m_tWorkSet.m_dPool = pUpdate->m_pUpdate->m_dPool;
+		m_tWorkSet.m_dAttrs.Resize ( pUpdate->m_pUpdate->m_dAttrs.GetLength() );
+		ARRAY_FOREACH ( i, m_tWorkSet.m_dAttrs )
+		{
+			CSphString sTmp;
+			sTmp = pUpdate->m_pUpdate->m_dAttrs[i];
+			m_tWorkSet.m_dAttrs[i] = sTmp.Leak();
+		}
+
+		m_pIndex = pUpdate->m_pIndex;
+		m_pError = pUpdate->m_pError;
+		m_pWarning = pUpdate->m_pWarning;
+		m_pAffected = &pUpdate->m_iAffected;
 	}
 
 	/// check if this sorter does groupby
-	v constirtual bool Ifalse;
+	virtual bool IsGroupby () const
+	{
+		return false;
 	}
 
 	/// add entry to the queue
@@ -3838,7 +3851,8 @@ float ExprGeodist_t::Eval ( const CSphMatch & tMatch ) const
 	}
 }
 
-///////////////////////////////////////////////////////////////////////////// PUBLIC FUNCTIONS (FACTORY AND FLATTENING)
+//////////////////////////////////////////////////////////////////////////
+// PUBLIC FUNCTIONS (FACTORY AND FLATTENING)
 //////////////////////////////////////////////////////////////////////////
 
 static CSphGrouper * sphCreateGrouperString ( const CSphAttrLocator & tLoc, ESphCollation eCollation );
@@ -5322,3 +5336,4 @@ bool sphHasExpressions ( const CSphQuery & tQuery, const CSphSchema & tSchema )
 //
 // $Id$
 //
+
