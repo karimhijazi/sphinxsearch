@@ -206,7 +206,7 @@ $query = create_function ( '&$results, $q, $sock,$vars', '
 	}
 	else if ($res===false)
 	{
-		$results[] = "failed:" . mysql_error();
+		$results[] = "failed";
 	}
 	else
 	{
