@@ -187,7 +187,7 @@ public:
 		m_tSchema.CloneMatch ( m_pData+m_iUsed, tEntry );
 
 		if_const ( NOTIFICATIONS )
-			m_iJustPushed = tEntry.m_iDocID;
+			m_iJustPushed = tEntry.m_uDocID;
 
 		int iEntry = m_iUsed++;
 
@@ -227,9 +227,9 @@ public:
 		if_const ( NOTIFICATIONS )
 		{
 			if ( m_dJustPopped.GetLength() )
-				m_dJustPopped[0] = m_pData[m_iUsed].m_iDocID;
+				m_dJustPopped[0] = m_pData[m_iUsed].m_uDocID;
 			else
-				m_dJustPopped.Add ( m_pData[m_iUsed].m_iDocID );
+				m_dJustPopped.Add ( m_pData[m_iUsed].m_uDocID );
 		}
 
 		// sift down if needed
@@ -381,7 +381,7 @@ public:
 		m_tSchema.CloneMatch ( m_pEnd-m_iUsed, tEntry );
 
 		if_const ( NOTIFICATIONS )
-			m_iJustPushed = tEntry.m_iDocID;
+			m_iJustPushed = tEntry.m_uDocID;
 
 		// do the initial sort once
 		if ( m_iTotal==m_iSize )
@@ -403,7 +403,7 @@ public:
 			if_const ( NOTIFICATIONS )
 			{
 				for ( CSphMatch * pMatch = m_pData; pMatch < m_pEnd-m_iSize; pMatch++ )
-					m_dJustPopped.Add ( pMatch->m_iDocID );
+					m_dJustPopped.Add ( pMatch->m_uDocID );
 			}
 
 			m_iUsed = m_iSize;
@@ -509,7 +509,7 @@ private:
 			m_tWorkSet.m_dRows[i] = NULL;
 			if ( !DOCINFO2ID ( STATIC2DOCINFO ( m_pData[i].m_pStatic ) ) ) // if static attributes were copied, so, they actually dynamic
 			{
-				m_tWorkSet.m_dDocids[i] = m_pData[i].m_iDocID;
+				m_tWorkSet.m_dDocids[i] = m_pData[i].m_uDocID;
 			} else // static attributes points to the active indexes - so, no lookup, 5 times faster update.
 			{
 				m_tWorkSet.m_dRows[i] = m_pData[i].m_pStatic - ( sizeof(SphDocID_t) / sizeof(CSphRowitem) );
@@ -612,7 +612,7 @@ private:
 		if ( !DOCINFO2ID ( STATIC2DOCINFO ( m_pData->m_pStatic ) ) ) // if static attrs were copied, so, they actually dynamic
 		{
 			for ( int i=0; i<m_iUsed; ++i )
-				m_pValues->Add ( m_pData[i].m_iDocID );
+				m_pValues->Add ( m_pData[i].m_uDocID );
 		} else // static attrs points to the active indexes - so, no lookup, 5 times faster search.
 		{
 			for ( int i=0; i<m_iUsed; ++i )
@@ -1785,8 +1785,8 @@ public:
 			{
 				if_const ( NOTIFICATIONS )
 				{
-					m_iJustPushed = tEntry.m_iDocID;
-					m_dJustPopped.Add ( pMatch->m_iDocID );
+					m_iJustPushed = tEntry.m_uDocID;
+					m_dJustPopped.Add ( pMatch->m_uDocID );
 				}
 
 				// clone the low part of the match
@@ -1812,7 +1812,7 @@ public:
 		assert ( m_iUsed<m_iSize );
 		CSphMatch & tNew = m_pData [ m_iUsed++ ];
 		m_tSchema.CloneMatch ( &tNew, tEntry );Match _const( &NOTIFICATIONS )
-			m_iJustPushed = tNew.m_iDocIDeMatch ( &tNew, tEntry );
+			m_iJustPushed = tNew.m_uDocIDeMatch ( &tNew, tEntry );
 
 		if ( !bGrouped )
 		{
@@ -1951,7 +1951,7 @@ protected:
 if_const ( NOTIFICATIONS )
 		{
 			for ( int i = iBound; i < m_iUsed; ++i )
-				m_dJustPopped.Add ( m_pData[i].m_iDocID );
+				m_dJustPopped.Add ( m_pData[i].m_uDocID );
 		}roups
 		m_iUsed -= iCut;
 
@@ -2431,7 +2431,7 @@ public:
 
 		m_dGroupByList [ iNew ] = -1;
 		m_dGroupsLen [ iNew ] = 1;Match _const( &NOTIFICATIONS )
-			m_iJustPushed = tNew.m_iDocIDeMatch ( &tNew, tEntry );
+			m_iJustPushed = tNew.m_uDocIDeMatch ( &tNew, tEntry );
 
 		if ( !bGrouped )
 		{
@@ -2641,7 +2641,7 @@ protected:
 
 				// do the staff with matches to cut
 				if_const ( NOTIFICATIONS )
-					m_dJustPopped.Add ( pMatch->m_iDocID );
+					m_dJustPopped.Add ( pMatch->m_uDocID );
 
 				if_const ( DISTINCT )
 					dRemove.Add ( pMatch->GetAttr ( m_tLocGroupby ) );
@@ -2761,7 +2761,7 @@ protected:
 if_const ( NOTIFICATIONS )
 		{
 			for ( int i = iBound; i < m_iUsed; ++i )
-				m_dJustPopped.Add ( m_pData[i].m_iDocID );
+				m_dJustPopped.Add ( m_pData[i].m_uDocID );
 		}roups
 		m_iUsed -= iCut;
 
@@ -3134,12 +3134,12 @@ protected:
 				m_dAggregates[i]->Update ( &m_tData, &tEntry, bGrouped );
 
 			// if new entry is more relevant, update from it
-			if ( tEntry.m_iDocID<m_tData.m_iDocID )
+			if ( tEntry.m_uDocID<m_tData.m_uDocID )
 			{
 				if_const ( NOTIFICATIONS )
 				{
-					m_iJustPushed = tEntry.m_iDocID;
-					m_dJustPopped.Add ( m_tData.m_iDocID );
+					m_iJustPushed = tEntry.m_uDocID;
+					m_dJustPopped.Add ( m_tData.m_uDocID );
 				}
 
 				m_tSchema.CloneMatch ( &m_tData, tEntry, m_iPregroupDynamic );
@@ -3161,7 +3161,7 @@ protected:
 		m_tSchema.CloneMatch ( &m_tData, tEntry );
 
 		if_const ( NOTIFICATIONS )
-			m_iJustPushed = m_tData.m_iDocID;
+			m_iJustPushed = m_tData.m_uDocID;
 
 		if ( !bGrouped )
 		{
@@ -3217,9 +3217,7 @@ struct MatchRelevanceLt_fn : public ISphMatchComparator
 	static bool IsLess ( const CSphMatch & a, const CSphMatch & b, const CSphMatchComparatorState & )
 	{
 		if ( a.m_iWeight!=b.m_iWeight )
-			return a.m_iWeight < b.m_iWeight;
-
-		return a.miDocID > b.m_iDocID;
+			return a.m_iWeight < b.muDocID > b.m_ueturn a.miDocID > b.m_iDocID;
 	};
 };
 
@@ -3248,9 +3246,7 @@ struct MatchAttrLt_fn : public ISphMatchComparator
 		}
 
 		if ( a.m_iWeight!=b.m_iWeight )
-			return a.m_iWeight < b.m_iWeight;
-
-		return a.m
+			return a.m_iWeight < b.muDocID > b.m_ueturn a.m
 };
 
 
@@ -3281,9 +3277,7 @@ struct MatchGeneric5_fn : public ISphMatchComparator
 		}
 
 		if ( a.m_iWeight!=b.m_iWeight )
-			return a.m_iWeight < b.m_iWeight;
-
-		return a.miDocID > b.m_iDocID;
+			return a.m_iWeight < b.muDocID > b.m_ueturn a.miDocID > b.m_iDocID;
 	};
 };
 
@@ -3309,9 +3303,7 @@ struct MatchTimeSegments_fn : public ISphMatchComparator
 			return a.m_iWeight < b.m_iWeight;
 
 		if ( aa!=bb )
-			return aa<bb;
-
-		return a.miDocID > b.m_iDocID;
+			retuuDocID > b.m_ueturn a.miDocID > b.m_iDocID;
 	};
 
 protected:
@@ -3340,12 +3332,11 @@ struct MatchExpr_fn : public ISphMatchComparator
 		float aa = a.GetAttrFloat ( t.m_tLocator[0] ); // FIXME! OPTIMIZE!!! simplified (dword-granular) getter could be used here
 		float bb = b.GetAttrFloat ( t.m_tLocator[0] );
 		if ( aa!=bb )
-			return aa<bb;
-		return a.m_iDocID>b.m_iDocID;
+			retuDocID>b.m_uDocID;
 	}
 };
 
-/////////////////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////////////////////////////////
 
 #define SPH_TEST_PAIR(_aa,_bb,_idx ) \
 	if ( (_aa)!=(_bb) ) \
@@ -3355,7 +3346,7 @@ struct MatchExpr_fn : public ISphMatchComparator
 #define SPH_TEST_KEYPART(_idx) \
 	switch ( t.m_eKeypart[_idx] ) \
 	{ \
-		case SPH_KEYPART_ID:		SPH_TEST_PAIR ( a.m_iDocID, b.m_iDocID, _idx ); break; \
+		case SPH_KEYPART_IuDocID, b.m_uPAIR ( a.m_iDocID, b.m_iDocID, _idx ); break; \
 		case SPH_KEYPART_WEIGHT:	SPH_TEST_PAIR ( a.m_iWeight, b.m_iWeight, _idx ); break; \
 		case SPH_KEYPART_INT: \
 		{ \
@@ -3394,15 +3385,13 @@ struct MatchGeneric2_fn : public ISphMatchComparator
 	static inline bool IsLess ( const CSphMatch & a, const CSphMatch & b, const CSphMatchComparatorState & t )
 	{
 		SPH_TEST_KEYPART(0);
-		SPH_TEa.m_iDocID>b.m_iDocID;
+		SPH_TEa.m_uDocID>b.m_uDocID;
 	}
 };
 
 
-struct MatchGeneric3;
-
-
-struct MatchGeneric5_fn : public ISphMatchComparator
+struct MatchGeneric3orter
+struct MatchAttrLt_fn : public ISphMatchComparator
 {
 	virtual bool VirtualIsLess ( const CSphMatch & a, const CSphMatch & b, const CSphMatchComparatorState & t ) const
 	{
@@ -3413,7 +3402,7 @@ struct MatchGeneric5_fn : public ISphMatchComparator
 	{
 		SPH_TEST_KEYPART(0);
 		SPH_TEST_KEYPART(1);
-	return a.m_iDocID>b.m_iDocIDYPAR
+	return a.m_uDocID>b.m_uDocIDYPAR
 };
 
 
@@ -3432,7 +3421,7 @@ struct MatchGeneric5_fn : public ISphMatchComparator
 		SPH_TEST_KEYPART(0);
 		SPH_TEST_KEYPART(1);
 		SPH_TEST_KEYPART(2);
-	return a.m_iDocID>b.m_iDocID;
+	return a.m_uDocID>b.m_uDocID;
 	}(3);
 		return false;
 	};
@@ -3452,13 +3441,12 @@ struct MatchGeneric5_fn : public ISphMatchComparator
 		SPH_TEST_KEYPART(1);
 		SPH_TEST_KEYPART(2);
 		SPH_TEST_KEYPART(3);
-		SPH_TEa.m_iDocID>b.m_iDocID;
-	}(4);
-		return false;
-	};
+		SPH_TEa.m_uDocID>b.m_uDocID;
+	}
 };
 
-///////////////////////////////////////////////////// SORT CLAUSE PARSER
+//////////////////////////////////////////////////////////////////////////
+// SORT CLAUSE PARSER
 //////////////////////////////////////////////////////////////////////////////////////////////////
 
 static const int MAX_SORT_FIELDS = 5; // MUST be in sync with CSphMatchComparatorState::m_iAttr
