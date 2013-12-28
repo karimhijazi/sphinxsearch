@@ -827,6 +827,8 @@ private:
 	ISphExpr *				CreateGeodistNode ( int iArgs );
 	ISphExpr *				CreateBitdotNode ( int iArgsNode, CSphVector<ISphExpr *> & dArgs );
 	ISphExpr *				CreateUdfNode ( int iCall, ISphExpr * pLeft );
+
+	bool					GetError () const { return !( m_sLexerError.IsEmpty() && m_sParserError.IsEmpty() && m_sCreateError.IsEmpty() ); }
 };
 
 //////////////////////////////////////////////////////////////////////////
@@ -1625,7 +1627,7 @@ ISphExpr * ExprParser_t::CreateUdfNode ( int iCall, ISphExpr * pLeft )
 /// fold nodes subtree into opcodes
 ISphExpr * ExprParser_t::CreateTree ( int iNode )
 {
-	if ( iNode<0 )
+	if ( iNode<0 || GetError() )
 		return NULL;
 
 	const ExprNode_t & tNode = m_dNodes[iNode];
@@ -1644,6 +1646,13 @@ ISphExpr * ExprParser_t::CreateTree ( int iNode )
 
 	ISphExpr * pLeft = bSkipLeft ? NULL : CreateTree ( tNode.m_iLeft );
 	ISphExpr * pRight = bSkipRight ? NULL : CreateTree ( tNode.m_iRight );
+
+	if ( GetError() )
+	{
+		SafeRelease ( pLeft );
+		SafeRelease ( pRight );
+		return NULL;
+	}
 
 #define LOC_SPAWN_POLY(_classname) \
 	if ( tNode.m_eArgType==SPH_ATTR_INTEGER )		return new _classname##Int_c ( pLeft, pRight ); \
