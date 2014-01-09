@@ -8914,8 +8914,11 @@ bool MakeSnippets ( CSphString sIndex, CSphVector<ExcerptQuery_t> & dQueries, CS
 						return false;
 					}
 					dQueries[i].m_iNext = EOF_ITEM;
+				} else
+				{
+					assert ( st.st_size>0 );
+					dQueries[i].m_iSize = -st.st_size; // so that sort would put bigger ones first
 				}
-				dQueries[i].m_iSize = -st.st_size; // so that sort would put bigger ones first
 			} else
 			{
 				dQueries[i].m_iSize = -dQueries[i].m_sSource.Length();
@@ -15070,6 +15073,9 @@ void TickHead ( CSphProcessSharedMutex * pAcceptMutex )
 	// handle the client
 	if ( g_eWorkers==MPM_NONE )
 	{
+		SphCrashLogger_c tQueryTLS;
+		tQueryTLS.SetupTLS ();
+
 		HandleClient ( pListener->m_eProto, iClientSock, sClientName, NULL );
 		sphSockClose ( iClientSock );
 		return;
@@ -15083,6 +15089,9 @@ void TickHead ( CSphProcessSharedMutex * pAcceptMutex )
 		SafeClose ( iChildPipe );
 		if ( !g_bHeadDaemon )
 		{
+			SphCrashLogger_c tQueryTLS;
+			tQueryTLS.SetupTLS ();
+
 			// child process, handle client
 			sphLogDebugv ( "conn %s: forked handler, socket %d", sClientName, iClientSock );
 			HandleClient ( pListener->m_eProto, iClientSock, sClientName, NULL );
@@ -16124,6 +16133,9 @@ int WINAPI ServiceMain ( int argc, char **argv )
 	ARRAY_FOREACH ( j, g_dListeners )
 		if ( listen ( g_dListeners[j].m_iSock, iBacklog )==-1 )
 			sphFatal ( "listen() failed: %s", sphSockError() );
+
+	SphCrashLogger_c tQueryTLS;
+	tQueryTLS.SetupTLS ();
 
 	sphInfo ( "accepting connections" );
 
