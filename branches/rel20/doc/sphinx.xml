@@ -11252,6 +11252,27 @@ prefork_rotation_throttle = 50 # throttle children restarts by 50 msec each
 
 <appendix id="changelog"><title>Sphinx revision history</title>
 
+<sect1 id="rel2010"><title>Version 2.0.10-release, ??? jan 2014</title>
+<bridgehead>Bug fixes</bridgehead>
+<itemizedlist>
+<listitem><para>fixed docs</para></listitem>
+<listitem><para>fixed rt_flush_period - less stricter internal check and more often flushes overall</para></listitem>
+<listitem><para>fixed #1700 crash and cutoff in fullscan reverse_scan=1 queries</para></listitem>
+<listitem><para>fixed #1520 SetLimits() API documentation</para></listitem>
+<listitem><para>fixed #1491 documentation: space character is prohibited in charset_table</para></listitem>
+<listitem><para>fixed #1698 proper handling of stopword with blended chars</para></listitem>
+<listitem><para>fixed #1705 expression ranker handling of indexes with more than 32 fields</para></listitem>
+<listitem><para>fixed memory leak in expressions with max_window_hits</para></listitem>
+<listitem><para>fixed #1678 memory leak in SUM() function of an expression ranker</para></listitem>
+<listitem><para>fixed #1744 daemon failed to write to log file bigger than 4G</para></listitem>
+<listitem><para>fixed #1670 updating of MVA attributes in distributed indexes via API</para></listitem>
+<listitem><para>fixed #1682 field end modifier and index_exact_words clash</para></listitem>
+<listitem><para>fixed #1662 EscapeString() API escapes '&lt;' too now</para></listitem>
+<listitem><para>fixed #1774 stack overflow on parsing large expressions</para></listitem>
+<listitem><para>fixed #1778 SENTENCE and PARAGRAPH operators and infix stars clash</para></listitem>
+</itemizedlist>
+</sect1>
+
 <sect1 id="rel209"><title>Version 2.0.9-release, 26 aug 2013</title>
 <bridgehead>Bug fixes</bridgehead>
 <itemizedlist>
