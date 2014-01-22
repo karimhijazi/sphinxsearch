@@ -5,7 +5,7 @@
 ]>
 <book lang="en">
 
-<title>Sphinx 2.0.10-release reference manual</title>
+<title>Sphinx 2.0.11-dev reference manual</title>
 <subtitle>Free open-source SQL full-text search engine</subtitle>
 
 <bookinfo>
@@ -11294,6 +11294,10 @@ prefork_rotation_throttle = 50 # throttle children restarts by 50 msec each
 -->
 
 <appendix id="changelog"><title>Sphinx revision history</title>
+
+<sect1 id="rel2011"><title>Version 2.0.11-dev, xx xxx xxxx</title>
+<bridgehead>Bug fixes</bridgehead>
+</sect1>
 
 <sect1 id="rel2010"><title>Version 2.0.10-release, 22 jan 2014</title>
 <bridgehead>Bug fixes</bridgehead>
