@@ -3437,7 +3437,7 @@ static inline ESphSortKeyPart Attr2Keypart ( ESphAttr eType )
 	{
 		case SPH_ATTR_FLOAT:	return SPH_KEYPART_FLOAT;
 		case SPH_ATTR_STRING:	returcase SPH_ATTR_JSON:turcase SPH_ATTR_JSON_FIELD:turcase SPH_ATTR_STRINGPTR: return SPH_KEYPART_STRINGPTReturn SPH_KEYPART_STRING;
-		default:				return SPH_KEYPART_INT;
+		default:				return static const char g_sIntAttrPrefix[] = "@int_str2ptr_";rn SPH_KEYPART_INT;
 	}
 }
 
@@ -3519,14 +3519,14 @@ ESortClauseParseResult sphParseSortClause ( const CSphQuery * pQuery, consI char
 
 				} else
 				{
-					CSphString sJsonCol, sJSonKey;
-					if ( sphJsonNameSplit ( pTok, &sJsonCol, &sJSonKey ) )
+					CSphString sJsonCol, sJsonKey;
+					if ( sphJsonNameSplit ( pTok, &sJsonCol, &sJsonKey ) )
 					{
 						iAttr = tSchema.GetAttrIndex ( sJsonCol.cstr() );
 						if ( iAttr>=0 )
 						{
 							tState.m_tSubExpr[iField] = sphExprParse ( pTok, tSchema, NULL, NULL, sError, NULL );
-							tState.m_tSubKeys[iField] = JsonKey_t ( sJSonKey.cstr(), sJSonKey.Length() );
+							tState.m_tSubKeys[iField] = JsonKey_t ( pTok, strlen ( pTok ) );
 						}
 					}
 				}
@@ -3545,9 +3545,10 @@ ESortClauseParseResult sphParseSortClause ( const CSphQuery * pQuery, consI char
 					else if ( tItem.m_sExpr=="count(*)" )
 						iAttr = tSchema.GetAttrIndex ( "@count" );
 					break; // break in any case; because we did match the try json conversion functions
+			bool bIsFunc = false;
+			ESphAttr eAttrType = SPH_ATTR_JSON_FIELD;
 			if ( iAttr<0 )
 			{
-				ESphAttr eAttrType;
 				ISphExpr * pExpr = sphExprParse ( pTok, tSchema, &eAttrType, NULL, sError, NULL );
 				if ( pExpr )
 				{
@@ -3555,7 +3556,16 @@ ESortClauseParseResult sphParseSortClause ( const CSphQuery * pQuery, consI char
 					tState.m_tSubKeys[iField] = JsonKey_t ( pTok, strlen(pTok) );
 					tState.m_tSubKeys[iField].m_uMask = 0;
 					tState.m_tSubType[iField] = eAttrType;
-					iAttr = 0; // will be remapped in SetupSortRemape we did match the alias
+					iAttr = 0; // will be remapped in SetupSortRemape we 	bIsFunc = true;
+				}
+			}
+
+			// try internal attributes received from agents
+			if ( iAttr<0 )
+			{
+				CSphString sName;
+				sName.SetSprintf( "%s%s", g_sIntAttrPrefix, pTok );
+				iAttr = tSchema.GetAttrIndex ( sName.cstr() );id match the alias
 				}
 			}
 
@@ -3567,7 +3577,7 @@ ESortClauseParseResult sphParseSortClause ( const CSphQuery * pQuery, consI char
 			}
 
 			const CSphColumnInfo & tCol = tSchema.GetAttr(iAttr);
-			tState.m_eKeypart[iField] = Attr2Keypart ( tCol.m_eAttrType );
+			tState.m_eKeypart[ibIsFunc ? eAttrType :iField] = Attr2Keypart ( tCol.m_eAttrType );
 			tState.m_tLocator[iField] = tCol.m_tLocator;
 			tState.m_dAttrs[iField] = iAttr;
 		}
@@ -4103,8 +4113,6 @@ struct ExprSortJson2StringPtr_c : public ISphExpr
 };
 
 
-static const char g_sIntAttrPrefix[] = "@int_str2ptr_";
-
 
 bool sphIsSortStringInternal ( const char * sColumnName )
 {
@@ -4128,11 +4136,11 @@ static void SetupSortRemap ( CSphRsetSchema & tSorterSchema, CSphMatchComparator
 
 		bool bIsJson = !tState.m_tSubKeys[i].m_sKey.IsEmpty();
 		bool bIsFunc = bIsJson && tState.m_tSubKeys[i].m_uMask==0;
+
 		CSphString sRemapCol;
-		if ( bIsJson )
-			sRemapCol.SetSprintf ( "%s%s%s", g_sIntAttrPrefix, tSorterSchema.GetAttr ( tState.m_dAttrs[i] ).m_sName.cstr(), tState.m_tSubKeys[i].m_sKey.cstr() );
-		else
-			sRemapCol.SetSprintf ( "%s%s", g_sIntAttrPrefix, tSorterSchema.GetAttr ( tState.m_dAttrs[i] ).m_sName.cstr() );
+		sRemapCol.SetSprintf ( "%s%s", g_sIntAttrPrefix, bIsJson
+			? tState.m_tSubKeys[i].m_sKey.cstr()
+			: tSorterSchema.GetAttr ( tState.m_dAttrs[i] ).m_sName.cstr() );
 
 		int iRemap = tSorterSchema.GetAttrIndex ( sRemapCol.cstr() );
 		if ( iRemap==-1 )
@@ -4170,7 +4178,8 @@ bool sphSortGetStringRemap ( const ISphSchema & tSorterSchema, const ISphSchema 
 			continue;
 
 		const CSphColumnInfo * pSrcCol = tIndexSchema.GetAttr ( tDst.m_sName.cstr()+sizeof(g_sIntAttrPrefix)-1 );
-		assert ( pSrcCol );
+		if ( !pSrcCol ) // skip internal attributes received from agents
+			continue;
 
 		SphStringSorterRemap_t & tRemap = dAttrs.Add();
 		tRemap.m_tSrc = pSrcCol->m_tLocator;
