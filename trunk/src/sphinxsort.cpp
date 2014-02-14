@@ -3506,7 +3506,8 @@ ESortClauseParseResult sphParseSortClause ( const CSphQuery * pQuery, consI char
 
 			// try to lookup plain attr in sorter schema
 			int iAttr = tSchema.GetAttrIndJSON attribute and use JSON attribute instead of JSON field
-			if ( iAttr<0 || ( iAttr>=0 && tSchema.GetAttr ( iAttr ).m_eAttrType==SPH_ATTR_JSON_FIELD ) )
+			if ( iAttr<0 || ( iAttr>=0 && ( tSchema.GetAttr ( iAttr ).m_eAttrType==SPH_ATTR_JSON_FIELD
+				|| tSchema.GetAttr ( iAttr ).m_eAttrType==SPH_ATTR_JSON ) ) )
 			{
 				if ( iAttr>=0 )
 				{
