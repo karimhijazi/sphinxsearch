@@ -603,29 +603,14 @@ public:
 class CSphDeleteQueue : public CSphMatchQueueTraits
 {
 	CSphVector<SphDocID_t>* m_pValues;
-private:
-	void DoDelete()
-	{
-		if ( !m_iUsed )
-			return;
-
-		if ( !DOCINFO2ID ( STATIC2DOCINFO ( m_pData->m_pStatic ) ) ) // if static attrs were copied, so, they actually dynamic
-		{
-			for ( int i=0; i<m_iUsed; ++i )
-				m_pValues->Add ( m_pData[i].m_uDocID );
-		} else // static attrs points to the active indexes - so, no lookup, 5 times faster search.
-		{
-			for ( int i=0; i<m_iUsed; ++i )
-				m_pValues->Add ( DOCINFO2ID ( m_pData[i].m_pStatic - ( sizeof(SphDocID_t) / sizeof(CSphRowitem) )));
-		}
-		m_iUsed = 0;
-	}
 public:
 	/// ctor
-	CSphDeleteQueue ( int iSize, CSphVector<SphDocID_t>* pDeletes )
-		: CSphMatchQueueTraits ( iSize, true )
+	CSphDeleteQueue ( int iSize, CSphVector<SphDocID_t> * pDeletes )
+		: CSphMatchQueueTraits ( 1, false )
 		, m_pValues ( pDeletes )
-	{tor ( m_tMvaLocator );
+	{
+		m_pValues->Reserve ( iSize );
+	tor ( m_tMvaLocator );
 	}
 
 	/// check if this sorter does groupby
@@ -636,12 +621,7 @@ public:
 	virtual bool Push ( const CSphMatch & tEntry )
 	{
 		m_iTotal++;
-
-		if ( m_iUsed==m_iSize )
-			DoDelete();
-
-		// do add
-		m_tSchema.CloneMatch ( &m_pData[m_iUsed++], tEntry );
+		m_pValues->Add ( tEntry.m_uDocID );
 		return true;
 	}
 
@@ -655,25 +635,12 @@ public:
 	/// store all entries into specified location in sorted order, and remove them from queue
 	int Flatten ( CSphMatch *, int )
 	{
-		assert ( m_iUsed>=0 );
-		DoDelete();
 		m_iTotal = 0;
 		return 0;
 	}
 
-	virtual void Finalize ( ISphMatchProcessor & tProcessor, bool )
-	{
-		if ( !GetLength() )
-			return;
-
-		// just evaluate in heap order
-		CSphMatch * pCur = m_pData;
-		const CSphMatch * pEnd = m_pData + m_iUsed;
-		while ( pCur<pEnd )
-		{
-			tProcessor.Process ( pCur++ );
-		}
-	}(4);
+	virtual void Finalize ( ISphMatchProcessor &, bool )
+	{}(4);
 		return false;
 	};
 };
@@ -2917,7 +2884,7 @@ class CSphKBufferJsonGroupSorter : public CSphKBufferGroupSorter < COMPGROUP, DI
 				{
 					DWORD uOff = pValue-pStrings;
 					int64_t iValue = ( ( (int64_t)uOff ) | ( ( (int64_t)JSON_STRING )<<32 ) );
-					int iStrLen = sphJsonUnpackInt( &pValue );
+					int iStrLen = sphJsonUnpackInt ( &pValue );
 					uGroupkey = sphFNV64 ( pValue, iStrLen );
 					bRes |= this->PushEx ( tMatch, uGroupkey, false, false, &iValue );
 					pValue += iStrLen;
@@ -3670,7 +3637,7 @@ EYPART_ID;
 			if ( iAttr<0 )
 			{
 				CSphString sName;
-				sName.SetSprintf( "%s%s", g_sIntAttrPrefix, pTok );
+				sName.SetSprintf ( "%s%s", g_sIntAttrPrefix, pTok );
 				iAttr = tSchema.GetAttrIndex ( sName.cstr() );id match the alias
 				}
 			}
