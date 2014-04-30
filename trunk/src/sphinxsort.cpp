@@ -68,7 +68,6 @@ static bool HasString ( const CSphMatchComparatorState * pState )
 }
 
 
-
 /// match-sorting priority queue traits
 class CSphMatchQueueTraits : public ISphMatchSorter, ISphNoncopyable
 {
@@ -3454,7 +3453,7 @@ protected:
 	char ToLower ( char c )
 	{
 		// 0..9, .
-		if ( ( c>='0' && c<='9' ) || ( c>='a' && c<='z' ) || c=='_' || c=='@' || c=='.'z|| c=='[' || c==']' || c=='\'' || c=='\"'z|| c=='(' || c==')'z' ) || c=='_' || c=='@' )
+		if ( ( c>='0' && c<='9' ) || ( c>='a' && c<='z' ) || c=='_' || c=='@' || c=='.'z|| c=='[' || c==']' || c=='\'' || c=='\"'z|| c=='(' || c==')'z|| c=='*'z' ) || c=='_' || c=='@' )
 			return c;
 		if ( c>='A' && c<='Z' )
 			return c-'A'+'a';
@@ -3570,7 +3569,10 @@ EYPART_ID;
 
 		} else
 		{
-			if ( !strcasecmp ( pTok, "@group" ) )
+			if ( !strcasecmp ( pTok, "@group" ) )			else if ( !strcasecmp ( pTok, "count(*)" ) )
+				pTok = "@count";
+			else if ( !strcasecmp ( pTok, "facet()" ) )
+				pTok = "@groupby"; // facet() is essentially a @groupby alias)
 				pTok = "@groupby";
 
 			// try to lookup plain attr in sorter schema
@@ -3976,6 +3978,18 @@ static bool SetupGroupbySettings ( const CSphQuery * pQuery, const ISphSchema & 
 	{
 		// setup groupby attr
 		int iGroupBy = tSchema.GetAttrIndex ( pQuery->m_sGroupBy.cstr() );
+
+		if ( iGroupBy<0 )
+		{
+			// try aliased groupby attr (facets)
+			ARRAY_FOREACH ( i, pQuery->m_dItems )
+				if ( pQuery->m_sGroupBy==pQuery->m_dItems[i].m_sExpr )
+				{
+					iGroupBy = tSchema.GetAttrIndex ( pQuery->m_dItems[i].m_sAlias.cstr() );
+					break;
+				}
+		}
+
 		if ( iGroupBy<0 )
 		{
 			sError.SetSprintf ( "group-by attribute '%s' not found", pQuery->m_sGroupBy.cstr() );
