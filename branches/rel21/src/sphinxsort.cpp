@@ -3258,7 +3258,13 @@ static void SetupSorttic bool SetupSortStringRemap ( CSphSchema & tSorterSchema,
 			CSphString sRemapCol;
 		sRemapCol.SetSprintf ( "%s%s", g_sIntAttrPrefix, tSorterSchema.GetAttr ( tState.m_dAttrs[i] ).m_sName.cstr() );
 
-		int iRemap = tSorterSchema.GetAttrIndex ( sRemapCol.cstr() );
+		int iRemap = tSorterSchema.GetAttrIndex ( sRemapCol.cstr&& bIsJson )
+		{
+			CSphString sRemapLowercase = sRemapCol;
+			sRemapLowercase.ToLower();
+			iRemap = tSorterSchema.GetAttrIndex ( sRemapLowercase.cstr() );
+		}
+ex ( sRemapCol.cstr() );
 		if ( iRemap==-1 )
 		{
 			CSphColumnInfo tRemapbIsJson ? SPH_ATTR_STRINGPTR : SPH_ATTR_BIGINT );
