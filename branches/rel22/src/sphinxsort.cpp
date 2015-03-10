@@ -2877,6 +2877,13 @@ class CSphKBufferJsonGroupSorter : public CSphKBufferGroupSorter < COMPGROUP, DI
 
 		switch ( eRes )
 		{
+		case JSON_ROOT:
+			{
+				iLen = sphJsonNodeSize ( JSON_ROOT, pValue-4 );
+				bool bEmpty = iLen==5; // mask and JSON_EOF
+				uGroupkey = bEmpty ? 0 : sphFNV64 ( pValue, iLen );
+				return this->PushEx ( tMatch, uGroupkey, false, false, bEmpty ? NULL : &iValue );
+			}
 		case JSON_STRING:
 		case JSON_OBJECT:
 		case JSON_MIXED_VECTOR:
@@ -3854,7 +3861,7 @@ float ExprGeodist_t::Eval ( const CSphMatch & tMatch ) const
 	float plon = tMatch.GetAttrFloat ( m_tGeoLongLoc );
 	double dlat = plat - m_fGeoAnchorLat;
 	double dlon = plon - m_fGeoAnchorLong;
-	double a = sphSqr ( sin ( dlat/2 ) ) + cos(plat)*cos(m_fGeoAnchorLat)*sphS c = 2*asin ( Min ( 1.0, sqrt(a) ) );
+	double a = sphSqr ( sin ( dlat/2 ) ) + cos(plat)*cos(m_fGeoAnchorLatdouble c = 2*asin ( Min ( 1.0, sqrt(a) ) );
 	return (float)(R*c);
 }
 
